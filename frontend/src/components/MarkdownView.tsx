@@ -1,7 +1,10 @@
-import React, { useEffect, useId, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
+import { Check, Code2, Copy, Maximize2, ZoomIn, ZoomOut } from 'lucide-react'
+import { toast } from 'sonner'
 import { useTheme } from '@/lib/theme'
+import { wikiImageUrl } from '@/api/wiki'
 
 /** Guard for [text](url) links: only render a real anchor for http(s) or
  *  scheme-less (relative) URLs. Anything with another scheme (javascript:,
@@ -157,6 +160,34 @@ function CodeBox({ code, lang }: { code: string; lang?: string }) {
   )
 }
 
+/** An extracted wiki image: `![alt](path)` where `path` is resolved against the
+ *  wiki via `wikiImageUrl`. Falls back to a clickable link on load error so a
+ *  broken/removed image never renders as a dead box. */
+function WikiImage({ alt, src, kb }: { alt: string; src: string; kb: string }) {
+  const [failed, setFailed] = useState(false)
+  const url = useMemo(() => wikiImageUrl(kb, src), [kb, src])
+  if (failed) {
+    return (
+      <div className="my-3">
+        <a href={url} target="_blank" rel="noopener noreferrer" className="text-accent-brand hover:underline text-[13px]">
+          {alt ? `${alt} (${src})` : src}
+        </a>
+      </div>
+    )
+  }
+  return (
+    <div className="my-3">
+      <img
+        src={url}
+        alt={alt}
+        loading="lazy"
+        onError={() => setFailed(true)}
+        className="max-w-full h-auto rounded-apple-md border border-[hsl(var(--glass-border))]"
+      />
+    </div>
+  )
+}
+
 /** Display (block) math via KaTeX. On a KaTeX error, falls back to the raw TeX
  *  in a code box so a malformed formula never crashes the message. */
 function MathBlock({ tex }: { tex: string }) {
@@ -179,11 +210,20 @@ function MathBlock({ tex }: { tex: string }) {
  * own bundle chunk, loaded only when a diagram appears). Theme-aware; on any
  * import/parse/render error, falls back to the raw source in a code box so a
  * malformed diagram never crashes the message.
+ *
+ * Toolbar: toggle between the rendered diagram and the raw source, copy the
+ * mermaid code to the clipboard, and zoom in/out the diagram (useful when the
+ * diagram is taller/wider than the viewport — e.g. a long flow or ER chart).
+ * Zoom applies a CSS scale on the SVG inside a scrollable frame so the diagram
+ * can be inspected at a readable size without clipping.
  */
 function MermaidBlock({ code }: { code: string }) {
   const { resolved } = useTheme()
   const ref = useRef<HTMLDivElement>(null)
   const [error, setError] = useState(false)
+  const [showCode, setShowCode] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [scale, setScale] = useState(1)
   const id = 'mmd-' + useId().replace(/[^a-zA-Z0-9]/g, '')
 
   useEffect(() => {
@@ -207,23 +247,112 @@ function MermaidBlock({ code }: { code: string }) {
     }
   }, [code, resolved, id])
 
+  // Reset zoom when the source changes (a new diagram starts at 100%).
+  useEffect(() => setScale(1), [code])
+
+  const copyCode = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(code)
+      setCopied(true)
+      toast.success('Copied mermaid source')
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      toast.error('Copy failed')
+    }
+  }, [code])
+
+  // Toolbar button base style.
+  const btn =
+    'inline-flex items-center gap-1.5 h-7 px-2 rounded-md text-[11.5px] font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-50'
+
   if (error) return <CodeBox code={code} lang="mermaid" />
   return (
-    <div
-      ref={ref}
-      className="my-3 flex justify-center overflow-x-auto [&_svg]:h-auto [&_svg]:max-w-full"
-    />
+    <div className="my-3">
+      <div className="flex items-center gap-1 rounded-t-lg border border-b-0 border-[hsl(var(--glass-border))] bg-muted/40 px-1.5 py-1">
+        <span className="mr-1 text-[10.5px] uppercase tracking-wide text-muted-foreground/70">mermaid</span>
+        <span className="flex-1" />
+        {!showCode && (
+          <>
+            <button
+              type="button"
+              className={btn}
+              onClick={() => setScale((s) => Math.max(0.5, Math.round((s - 0.25) * 100) / 100))}
+              title="Zoom out"
+              aria-label="Zoom out"
+            >
+              <ZoomOut className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              className={btn}
+              onClick={() => setScale((s) => Math.min(3, Math.round((s + 0.25) * 100) / 100))}
+              title="Zoom in"
+              aria-label="Zoom in"
+            >
+              <ZoomIn className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              className={btn}
+              onClick={() => setScale(1)}
+              title="Reset zoom"
+              aria-label="Reset zoom"
+              disabled={scale === 1}
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+            </button>
+          </>
+        )}
+        <button
+          type="button"
+          className={btn}
+          onClick={copyCode}
+          title="Copy mermaid source"
+          aria-label="Copy mermaid source"
+        >
+          {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+          {copied ? 'Copied' : 'Copy'}
+        </button>
+        <button
+          type="button"
+          className={btn}
+          onClick={() => setShowCode((v) => !v)}
+          title={showCode ? 'Show diagram' : 'Show source'}
+          aria-label={showCode ? 'Show diagram' : 'Show source'}
+        >
+          <Code2 className="w-3.5 h-3.5" />
+          {showCode ? 'Diagram' : 'Source'}
+        </button>
+      </div>
+
+      {showCode ? (
+        <CodeBox code={code} lang="mermaid" />
+      ) : (
+        <div
+          className="rounded-b-lg border border-[hsl(var(--glass-border))] bg-[hsl(var(--glass-2))] overflow-auto"
+          style={{ maxHeight: 560 }}
+        >
+          <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: scale > 1 ? `${100 / scale}%` : 'auto' }}>
+            <div ref={ref} className="flex justify-center p-3 [&_svg]:h-auto [&_svg]:max-w-none" />
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
 export default function MarkdownView({
   source,
   onWikiLink,
+  kb,
 }: {
   source: string
   /** Navigate to a `[[target]]` wikilink's page. Omit to render plain,
    *  non-interactive tokens (no `cursor-pointer` implying a dead click). */
   onWikiLink?: (target: string) => void
+  /** Knowledge-base name, needed to resolve `![alt](path)` wiki images. When
+   *  omitted, image markdown renders as a plain link instead of an `<img>`. */
+  kb?: string
 }) {
   const lines = source.split('\n')
   const out: React.ReactNode[] = []
@@ -284,6 +413,25 @@ export default function MarkdownView({
       const code = body.join('\n')
       if (lang === 'mermaid') out.push(<MermaidBlock key={key++} code={code} />)
       else out.push(<CodeBox key={key++} code={code} lang={lang || undefined} />)
+      continue
+    }
+
+    // Block image: `![alt](path)` on its own line. Path is the wiki image ref
+    // (note-relative or wiki-root-relative) resolved via the wiki endpoint.
+    const img = /^!\[([^\]]*)\]\(([^)]+)\)\s*$/.exec(line.trim())
+    if (img) {
+      flushBlocks()
+      const [, alt, src] = img
+      if (kb) {
+        out.push(<WikiImage key={key++} alt={alt} src={src.trim()} kb={kb} />)
+      } else {
+        // No KB context — render as a plain link (the src is not a real URL).
+        out.push(
+          <p key={key++} className="my-1.5 text-[14px] leading-relaxed text-muted-foreground">
+            {alt || src}
+          </p>,
+        )
+      }
       continue
     }
 

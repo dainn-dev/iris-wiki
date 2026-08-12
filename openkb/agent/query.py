@@ -58,6 +58,7 @@ def build_query_agent(
     model: str,
     language: str = "en",
     bundle: "LlmCredentialBundle | None" = None,
+    images_enabled: bool = True,
 ) -> Agent:
     """Build and return the Q&A agent."""
     schema_md = get_agents_md(Path(wiki_root))
@@ -96,6 +97,17 @@ def build_query_agent(
                 note-relative as used in sources/ .md pages
                 ('images/doc/p1_img1.png').
         """
+        if not images_enabled:
+            # Text-only deployment (config `images_enabled: false`): the
+            # provider rejects image content parts, so never return an image.
+            # Give the model a re-fetch hint instead of a silent dead-end.
+            return ToolOutputText(
+                text=(
+                    "Image output is disabled for this deployment "
+                    "(config images_enabled: false). Image exists at: "
+                    f"{image_path}. Describe what you know from surrounding text."
+                )
+            )
         result = read_wiki_image(image_path, wiki_root)
         if result["type"] == "image":
             return ToolOutputImage(image_url=result["image_url"])
@@ -213,6 +225,7 @@ def build_chat_agent(
     model: str,
     language: str = "en",
     bundle: "LlmCredentialBundle | None" = None,
+    images_enabled: bool = True,
 ) -> Agent:
     """Build the chat agent: query agent + a write tool restricted to
     ``<kb>/wiki/explorations/**`` and ``<kb>/output/**`` + a ``ShellTool``
@@ -231,7 +244,9 @@ def build_chat_agent(
     """
     wiki_root = str(kb_dir / "wiki")
     kb_root = str(kb_dir)
-    base = build_query_agent(wiki_root, model, language=language, bundle=bundle)
+    base = build_query_agent(
+        wiki_root, model, language=language, bundle=bundle, images_enabled=images_enabled
+    )
 
     @function_tool
     def write_file(path: str, content: str) -> str:
@@ -381,10 +396,13 @@ async def run_query(
 
     config = resolve_effective_config(kb_dir)[0]
     language: str = config.get("language", "en")
+    images_enabled: bool = bool(config.get("images_enabled", True))
 
     wiki_root = str(kb_dir / "wiki")
 
-    agent = build_query_agent(wiki_root, model, language=language, bundle=bundle)
+    agent = build_query_agent(
+        wiki_root, model, language=language, bundle=bundle, images_enabled=images_enabled
+    )
 
     if not stream:
         result = (

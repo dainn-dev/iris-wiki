@@ -423,6 +423,9 @@ class _KbConfigWritable(BaseModel):
     # explicit null reverts to inherited. Values are cleaned/deduped and "other"
     # is always ensured at read time (config.resolve_entity_types).
     entity_types: list[str] | None = None
+    # Whether agents may return images (get_image → ToolOutputImage). Some
+    # gateways reject image content parts, so this forces text-only agents.
+    images_enabled: bool | None = None
 
 
 # Single source of truth for the writable config keys (derived from the model
@@ -437,6 +440,7 @@ class GlobalConfigValues(BaseModel):
     language: str | None = None
     pageindex_threshold: int | None = None
     entity_types: list[str] | None = None
+    images_enabled: bool | None = None
 
 
 class GlobalConfigResponse(BaseModel):
@@ -445,6 +449,8 @@ class GlobalConfigResponse(BaseModel):
     pageindex_threshold: int
     # Effective global entity-type vocabulary (cleaned; always includes "other").
     entity_types: list[str]
+    # Whether agents may return images (global default).
+    images_enabled: bool
     # Effective KB root that kb_root_dir() would return (env OPENKB_KB_ROOT >
     # global.yaml kb_root > default <config>/kbs). kb_root_env_pinned is True
     # when OPENKB_KB_ROOT is set — a global.yaml kb_root is then ineffective, so
@@ -480,6 +486,8 @@ class KbConfigResponse(BaseModel):
     pageindex_threshold: int
     # Effective entity-type vocabulary (cleaned; always includes "other").
     entity_types: list[str]
+    # Whether agents may return images for this KB (effective).
+    images_enabled: bool
     openai_api_base: str | None
     has_api_key: bool
     # Additive (non-breaking): which layer supplied each scalar's effective

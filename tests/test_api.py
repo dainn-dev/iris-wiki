@@ -2028,6 +2028,79 @@ def test_page_endpoint_rejects_mid_path_escape(monkeypatch, kb_dir):
     assert response.status_code == 400
 
 
+# --- GET /api/v1/wiki/image --------------------------------------------------
+
+
+def test_wiki_image_endpoint_serves_png(monkeypatch, kb_dir):
+    client = _client(monkeypatch)
+    kb = _use_named_kb(monkeypatch, kb_dir)
+    img_dir = kb_dir / "wiki" / "sources" / "images" / "doc"
+    img_dir.mkdir(parents=True, exist_ok=True)
+    (img_dir / "p1.png").write_bytes(b"\x89PNG\r\n\x1a\nfakepng")
+
+    # note-relative form (short-doc source pages embed this)
+    r1 = client.get("/api/v1/wiki/image", params={"kb": kb, "path": "images/doc/p1.png"}, headers=_auth())
+    assert r1.status_code == 200
+    assert r1.headers["content-type"].startswith("image/png")
+    assert r1.content == b"\x89PNG\r\n\x1a\nfakepng"
+
+    # wiki-root-relative form (long-doc JSON metadata lists this)
+    r2 = client.get(
+        "/api/v1/wiki/image", params={"kb": kb, "path": "sources/images/doc/p1.png"}, headers=_auth()
+    )
+    assert r2.status_code == 200
+    assert r2.content == b"\x89PNG\r\n\x1a\nfakepng"
+
+
+def test_wiki_image_endpoint_404_on_missing(monkeypatch, kb_dir):
+    client = _client(monkeypatch)
+    kb = _use_named_kb(monkeypatch, kb_dir)
+
+    r = client.get("/api/v1/wiki/image", params={"kb": kb, "path": "images/doc/nope.png"}, headers=_auth())
+    assert r.status_code == 404
+
+
+def test_wiki_image_endpoint_rejects_traversal(monkeypatch, kb_dir):
+    client = _client(monkeypatch)
+    kb = _use_named_kb(monkeypatch, kb_dir)
+
+    r = client.get(
+        "/api/v1/wiki/image", params={"kb": kb, "path": "../../../etc/passwd"}, headers=_auth()
+    )
+    assert r.status_code == 400
+
+
+def test_wiki_image_endpoint_rejects_bad_prefix(monkeypatch, kb_dir):
+    client = _client(monkeypatch)
+    kb = _use_named_kb(monkeypatch, kb_dir)
+
+    r = client.get("/api/v1/wiki/image", params={"kb": kb, "path": "etc/passwd"}, headers=_auth())
+    assert r.status_code == 400
+
+
+def test_wiki_image_endpoint_accepts_query_token(monkeypatch, kb_dir):
+    """Browser <img> tags can't send an Authorization header, so the wiki image
+    endpoint accepts the bearer token as a `?token=` query param instead."""
+    client = _client(monkeypatch, token="secret")
+    kb = _use_named_kb(monkeypatch, kb_dir)
+    img_dir = kb_dir / "wiki" / "sources" / "images" / "doc"
+    img_dir.mkdir(parents=True, exist_ok=True)
+    (img_dir / "p1.png").write_bytes(b"\x89PNG\r\n\x1a\nfakepng")
+
+    ok = client.get(
+        "/api/v1/wiki/image", params={"kb": kb, "path": "images/doc/p1.png", "token": "secret"}
+    )
+    assert ok.status_code == 200
+
+    bad = client.get(
+        "/api/v1/wiki/image", params={"kb": kb, "path": "images/doc/p1.png", "token": "wrong"}
+    )
+    assert bad.status_code == 401
+
+    none = client.get("/api/v1/wiki/image", params={"kb": kb, "path": "images/doc/p1.png"})
+    assert none.status_code == 401
+
+
 def test_deck_endpoint_non_stream_generates_artifact(monkeypatch, kb_dir):
     client = _client(monkeypatch)
     kb = _use_named_kb(monkeypatch, kb_dir)

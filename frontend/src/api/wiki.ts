@@ -1,4 +1,4 @@
-import { apiFetch } from "./client"
+import { apiFetch, getApiBase, getToken } from "./client"
 
 /** A concept-graph node. Shape mirrors `openkb.visualize.build_graph`. */
 export interface GraphData {
@@ -47,6 +47,21 @@ export function getGraph(kb: string): Promise<GraphData> {
 /** Fetch one wiki page's Markdown. `path` is relative to `wiki/` (`.md` optional). */
 export function getPage(kb: string, path: string): Promise<{ path: string; content: string }> {
   return apiFetch<{ path: string; content: string }>("/api/v1/page", { body: { kb, path } })
+}
+
+/**
+ * Build the URL for one extracted wiki image (`GET /api/v1/wiki/image`).
+ * `path` accepts both forms wiki markdown uses: note-relative
+ * (`images/<doc>/<file>`) or wiki-root-relative (`sources/images/<doc>/<file>`).
+ * The bearer token is appended as a query param so an `<img src>` can load it
+ * without a custom header (browser `<img>` tags can't set Authorization).
+ */
+export function wikiImageUrl(kb: string, path: string): string {
+  const base = getApiBase().replace(/\/$/, "")
+  const qs = new URLSearchParams({ kb, path })
+  const token = getToken()
+  if (token) qs.set("token", token)
+  return `${base}/api/v1/wiki/image?${qs.toString()}`
 }
 
 export function getKbInventory(kb: string): Promise<KbInventory> {

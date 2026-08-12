@@ -137,12 +137,14 @@ def test_default_config_keys():
     assert "model" in DEFAULT_CONFIG
     assert "language" in DEFAULT_CONFIG
     assert "pageindex_threshold" in DEFAULT_CONFIG
+    assert "images_enabled" in DEFAULT_CONFIG
 
 
 def test_default_config_values():
     assert DEFAULT_CONFIG["model"] == "gpt-5.4"
     assert DEFAULT_CONFIG["language"] == "en"
     assert DEFAULT_CONFIG["pageindex_threshold"] == 20
+    assert DEFAULT_CONFIG["images_enabled"] is True
 
 
 def test_concurrency_not_in_default_config():
@@ -432,6 +434,37 @@ def test_effective_scalar_null_in_kb_inherits_not_clobbers(_isolated_global, tmp
     eff, src = resolve_effective_config(kb)
     assert eff["model"] == "global-model"  # null means inherit, not None
     assert src["model"] == "global"
+
+
+def test_effective_images_enabled_default_true(_isolated_global, tmp_path):
+    eff, src = resolve_effective_config(_kb(tmp_path / "kb"))
+    assert eff["images_enabled"] is True
+    assert src["images_enabled"] == "default"
+
+
+def test_effective_images_enabled_global_override(_isolated_global, tmp_path):
+    save_global_config({"images_enabled": False})
+    eff, src = resolve_effective_config(_kb(tmp_path / "kb"))
+    assert eff["images_enabled"] is False
+    assert src["images_enabled"] == "global"
+
+
+def test_effective_images_enabled_kb_wins_over_global(_isolated_global, tmp_path):
+    save_global_config({"images_enabled": False})
+    kb = _kb(tmp_path / "kb")
+    save_config(kb / ".openkb" / "config.yaml", {"images_enabled": True})
+    eff, src = resolve_effective_config(kb)
+    assert eff["images_enabled"] is True
+    assert src["images_enabled"] == "kb"
+
+
+def test_effective_images_enabled_kb_null_inherits_global(_isolated_global, tmp_path):
+    save_global_config({"images_enabled": False})
+    kb = _kb(tmp_path / "kb")
+    save_config(kb / ".openkb" / "config.yaml", {"images_enabled": None})
+    eff, src = resolve_effective_config(kb)
+    assert eff["images_enabled"] is False  # null means inherit
+    assert src["images_enabled"] == "global"
 
 
 def test_effective_preserves_non_scalar_kb_keys_including_meaningful_null(

@@ -41,6 +41,19 @@ class TestBuildQueryAgent:
         agent = build_query_agent(str(tmp_path), "my-model")
         assert agent.model == "litellm/my-model"
 
+    def test_get_image_tool_present_when_enabled(self, tmp_path):
+        agent = build_query_agent(str(tmp_path), "gpt-4o-mini", images_enabled=True)
+        names = {t.name for t in agent.tools}
+        assert "get_image" in names
+
+    def test_get_image_tool_present_when_disabled(self, tmp_path):
+        # The tool stays registered even when images are disabled; the DISABLED
+        # mode changes its OUTPUT (text hint instead of ToolOutputImage), which
+        # is what keeps text-only gateways from rejecting image_url parts.
+        agent = build_query_agent(str(tmp_path), "gpt-4o-mini", images_enabled=False)
+        names = {t.name for t in agent.tools}
+        assert "get_image" in names
+
 
 class TestRunQuery:
     @pytest.mark.asyncio

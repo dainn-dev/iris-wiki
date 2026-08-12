@@ -186,6 +186,21 @@ function KbConfigSection({ kb }: { kb: string }) {
     [kb, apply, t],
   )
 
+  // Persist the images_enabled override (bool) or revert to inherited (null).
+  const setImagesEnabledOverride = useCallback(
+    async (value: boolean | null) => {
+      setBusy(true)
+      try {
+        apply(await patchKbConfig(kb, { config: { images_enabled: value } }))
+      } catch (e) {
+        toast.error(t('common:saveError', { error: errMsg(e) }))
+      } finally {
+        setBusy(false)
+      }
+    },
+    [kb, apply, t],
+  )
+
   const saveCredentials = useCallback(async () => {
     if (!config) return
     setBusy(true)
@@ -281,6 +296,14 @@ function KbConfigSection({ kb }: { kb: string }) {
         busy={busy}
         onSet={setEntityTypesOverride}
         onRevert={() => setEntityTypesOverride(null)}
+      />
+      <ImagesEnabledRow
+        source={config.sources.images_enabled}
+        effective={config.images_enabled}
+        globalValue={config.global_values.images_enabled}
+        busy={busy}
+        onSet={(v) => setImagesEnabledOverride(v)}
+        onRevert={() => setImagesEnabledOverride(null)}
       />
 
       <h3 className="pt-2 text-[12px] font-semibold text-muted-foreground tracking-wide">{t('kbSettings:credHeading')}</h3>
@@ -463,6 +486,73 @@ function EntityTypesRow({
         </div>
       )}
       <p className="mt-1.5 text-[11.5px] text-muted-foreground">{t('kbSettings:entityTypesNote')}</p>
+    </div>
+  )
+}
+
+/** Boolean sibling of OverrideRow for ``images_enabled``: the same 为本库覆盖
+ *  switch + inherited badge, but the "override" IS the switch — flipping it
+ *  persists the bool; turning the override OFF reverts to inherited (null). */
+function ImagesEnabledRow({
+  source,
+  effective,
+  globalValue,
+  busy,
+  onSet,
+  onRevert,
+}: {
+  source: ConfigSource
+  effective: boolean
+  globalValue: boolean | null
+  busy: boolean
+  onSet: (value: boolean) => void
+  onRevert: () => void
+}) {
+  const { t } = useTranslation(['kbSettings', 'common'])
+  const overridden = source === 'kb'
+  const label = t('common:fields.imagesEnabled')
+  const inheritedBadge =
+    source === 'global'
+      ? t('kbSettings:inheritGlobal', { value: globalValue ? t('common:on') : t('common:off') })
+      : t('kbSettings:inheritDefault', {
+          value: effective ? t('common:on') : t('common:off'),
+        })
+
+  return (
+    <div>
+      <div className="flex items-center justify-between">
+        <label className="text-[12px] font-medium text-muted-foreground">{label}</label>
+        <span className="flex items-center gap-2 text-[11px] text-muted-foreground">
+          {t('kbSettings:override')}
+          <Switch
+            checked={overridden}
+            disabled={busy}
+            onCheckedChange={(v) => (v ? onSet(effective) : onRevert())}
+            aria-label={t('kbSettings:overrideAria', { label })}
+          />
+        </span>
+      </div>
+      {overridden ? (
+        <div className="mt-1.5 flex items-center justify-between rounded-md border border-[hsl(var(--glass-border))] px-3 h-9">
+          <span className="text-[12.5px] text-muted-foreground">{label}</span>
+          <Switch
+            checked={effective}
+            disabled={busy}
+            onCheckedChange={onSet}
+            aria-label={label}
+          />
+        </div>
+      ) : (
+        <div
+          data-field="images_enabled"
+          className="mt-1.5 flex h-9 items-center rounded-md border border-dashed border-[hsl(var(--glass-border))] px-3 text-[12.5px] text-muted-foreground"
+        >
+          {inheritedBadge}
+        </div>
+      )}
+      <p className="mt-1.5 text-[11.5px] text-muted-foreground">
+        {t('common:fields.imagesEnabledDesc')}
+      </p>
     </div>
   )
 }

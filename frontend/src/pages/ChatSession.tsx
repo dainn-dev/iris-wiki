@@ -159,10 +159,12 @@ function AssistantMessage({
   turn,
   onOpen,
   onOpenArtifact,
+  kb,
 }: {
   turn: ChatTurnState
   onOpen: (s: Source) => void
   onOpenArtifact: (a: Artifact) => void
+  kb: string
 }) {
   const { t } = useTranslation("chat")
   const streaming = !turn.done
@@ -191,6 +193,7 @@ function AssistantMessage({
                 <div key={`step-${i}`} className="text-[14px]">
                   <MarkdownView
                     source={step.text}
+                    kb={kb}
                     onWikiLink={(target) => onOpen({ kind: "page", label: target, path: target })}
                   />
                 </div>
@@ -728,6 +731,7 @@ export default function ChatSession() {
               <AssistantMessage
                 key={m.id}
                 turn={m.turn}
+                kb={kb}
                 onOpen={openSource}
                 onOpenArtifact={setPanelArtifact}
               />
@@ -781,7 +785,7 @@ export default function ChatSession() {
                 {t("common:pageLoadError", { error: panel.error })}
               </div>
             )}
-            {panel.content !== null && <MarkdownView source={panel.content} />}
+            {panel.content !== null && <MarkdownView source={panel.content} kb={kb} />}
           </div>
         </SheetContent>
       </Sheet>

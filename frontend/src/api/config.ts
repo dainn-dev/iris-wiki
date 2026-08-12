@@ -9,6 +9,9 @@ export interface GlobalConfig {
   /** CLEANED effective global entity-extraction vocabulary (always includes
    *  "other"). Mirrors KbConfig.entity_types. */
   entity_types: string[]
+  /** Whether agents may return images (global default). False forces agents
+   *  to text-only output, for gateways that reject image content parts. */
+  images_enabled: boolean
   /** Plaintext global-default LLM base URL (a config value, not a secret);
    *  null if unset. Mirrors KbConfig.openai_api_base. */
   openai_api_base?: string | null
@@ -36,6 +39,8 @@ export interface GlobalConfigPatch {
     /** A list sets the global vocabulary; `null` reverts to the built-in
      *  default. Cleaned server-side (lowercase, `[a-z0-9 _-]`, + "other"). */
     entity_types?: string[] | null
+    /** Whether agents may return images; `null` reverts to the default (on). */
+    images_enabled?: boolean | null
   }
   api_key?: string | null
   openai_api_base?: string | null

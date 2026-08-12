@@ -144,7 +144,13 @@ async def run_skill(
 
     wiki_root = str(kb_dir / "wiki")
     kb_root = str(kb_dir)
-    base = build_query_agent(wiki_root, model, language=language, bundle=bundle)
+    from openkb.config import resolve_effective_config
+
+    config = resolve_effective_config(kb_dir)[0]
+    images_enabled = bool(config.get("images_enabled", True))
+    base = build_query_agent(
+        wiki_root, model, language=language, bundle=bundle, images_enabled=images_enabled
+    )
 
     @function_tool
     def write_file(path: str, content: str) -> str:

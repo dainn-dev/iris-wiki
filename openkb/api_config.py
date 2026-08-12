@@ -154,6 +154,7 @@ def read_kb_config(kb_dir: Path) -> KbConfigResponse:
         # Cleaned effective list (what the compiler will use), not the raw stored
         # value — resolve_entity_types defaults + dedupes + ensures "other".
         entity_types=resolve_entity_types(effective, warn=False),
+        images_enabled=bool(effective["images_enabled"]),
         openai_api_base=bundle.base_url,
         has_api_key=bundle.api_key is not None,
         sources=sources,
@@ -162,6 +163,7 @@ def read_kb_config(kb_dir: Path) -> KbConfigResponse:
             language=global_config.get("language"),
             pageindex_threshold=global_config.get("pageindex_threshold"),
             entity_types=global_config.get("entity_types"),
+            images_enabled=global_config.get("images_enabled"),
         ),
     )
 
@@ -269,6 +271,8 @@ def read_global_config() -> GlobalConfigResponse:
         pageindex_threshold=gc.get("pageindex_threshold", DEFAULT_CONFIG["pageindex_threshold"]),
         # Effective global vocabulary (cleaned; defaults to DEFAULT_ENTITY_TYPES).
         entity_types=resolve_entity_types(gc, warn=False),
+        # Effective global image capability (defaults to enabled).
+        images_enabled=bool(gc.get("images_enabled", DEFAULT_CONFIG["images_enabled"])),
         # Report the EFFECTIVE root (env > global.yaml kb_root > default) via the
         # module object so a test-monkeypatched GLOBAL_CONFIG_DIR is honored.
         kb_root=str(_config_module.kb_root_dir()),

@@ -812,7 +812,7 @@ function ReaderBody({ kb, selected, page, pageError, selectedPath, hasPages, inv
           </div>
         </div>
       ) : pageReady ? (
-        <MarkdownView source={page.content} onWikiLink={onWikiLink} />
+        <MarkdownView source={page.content} onWikiLink={onWikiLink} kb={kb} />
       ) : (
         <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
           <Loader2 className="w-3.5 h-3.5 animate-spin" />{t('common:loading')}
@@ -1120,8 +1120,10 @@ function DocumentsPane({
   // Parse Markdown once per fetched source (stable cache ref → no re-parse).
   const readerBody = useMemo(
     () =>
-      docSource && docSource.content.trim() ? <MarkdownView source={docSource.content} /> : null,
-    [docSource],
+      docSource && docSource.content.trim() ? (
+        <MarkdownView source={docSource.content} kb={kb} />
+      ) : null,
+    [docSource, kb],
   )
   const readerEmpty = docSource != null && docSource.content.trim().length === 0
 

@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 from typing import Any, AsyncIterator
 
-from fastapi import Depends, FastAPI, HTTPException, Request, UploadFile, status
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
@@ -102,6 +102,7 @@ def _mount_web_ui(app: FastAPI) -> None:
 
 def require_bearer_token(
     credentials: HTTPAuthorizationCredentials | None = Depends(security),
+    token: str | None = Query(default=None),
 ) -> None:
     expected = os.environ.get("OPENKB_API_TOKEN")
     if not expected:
@@ -111,16 +112,19 @@ def require_bearer_token(
         # OPENKB_API_TOKEN to require a bearer token (main() warns when bound to
         # a non-loopback host without one).
         return
-    if credentials is None or credentials.scheme.lower() != "bearer":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Bearer token required.",
-        )
-    if not hmac.compare_digest(credentials.credentials, expected):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid bearer token.",
-        )
+    if credentials is not None and credentials.scheme.lower() == "bearer":
+        if hmac.compare_digest(credentials.credentials, expected):
+            return
+    # Fall back to a `?token=` query param: browser `<img>`/`<link>`/media tags
+    # cannot set an Authorization header, so the wiki-image endpoint passes the
+    # token in the URL instead. Accepting it here keeps image loading working
+    # on a token-protected server without weakening header auth.
+    if token is not None and hmac.compare_digest(token, expected):
+        return
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Bearer token required.",
+    )
 
 
 def _resolve_kb(value: str) -> Path:
@@ -424,7 +428,10 @@ async def _stream_query(
     try:
         config = resolve_effective_config(kb_dir)[0]
         language = config.get("language", "en")
-        agent = build_query_agent(str(kb_dir / "wiki"), model, language=language, bundle=bundle)
+        images_enabled = bool(config.get("images_enabled", True))
+        agent = build_query_agent(
+            str(kb_dir / "wiki"), model, language=language, bundle=bundle, images_enabled=images_enabled
+        )
         final_answer = ""
         async for event in iter_agent_response_events(
             agent, request.question, run_config=run_config

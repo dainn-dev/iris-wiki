@@ -10,11 +10,15 @@
     "refresh": "Làm mới",
     "cancel": "Hủy"
   },
+  "on": "Bật",
+  "off": "Tắt",
   "fields": {
     "model": "Mô hình",
     "wikiLanguage": "Ngôn ngữ đầu ra wiki",
     "threshold": "Ngưỡng PageIndex (số trang)",
-    "entityTypes": "Loại thực thể"
+    "entityTypes": "Loại thực thể",
+    "imagesEnabled": "Agent trả về hình ảnh",
+    "imagesEnabledDesc": "Khi tắt, agent chỉ đọc văn bản (dùng cho gateway không hỗ trợ nội dung hình ảnh)."
   },
   "entityTypes": {
     "placeholder": "Thêm một loại, nhấn Enter",

@@ -9,7 +9,10 @@ serialize via page_ops' own KB ingest lock, not the app's per-KB asyncio lock.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+import mimetypes
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import FileResponse
 from starlette.concurrency import run_in_threadpool
 
 from openkb.api_helpers import _resolve_kb, require_bearer_token
@@ -43,6 +46,47 @@ async def page_endpoint(
         raise HTTPException(status_code=404, detail=f"Page not found: {request.path}")
     content = await run_in_threadpool(target.read_text, encoding="utf-8")
     return PageResponse(path=request.path, content=content)
+
+
+@pages_router.get("/api/v1/wiki/image")
+async def wiki_image_endpoint(
+    kb: str = Query(...),
+    path: str = Query(...),
+    _: None = Depends(require_bearer_token),
+) -> FileResponse:
+    """Serve one extracted wiki image (`wiki/sources/images/...`).
+
+    ``path`` accepts BOTH forms wiki markdown uses:
+      * note-relative, as short-doc source pages embed it:
+        ``images/<doc>/<file>`` → resolved under ``wiki/sources/``.
+      * wiki-root-relative, as long-doc JSON metadata lists it:
+        ``sources/images/<doc>/<file>`` → resolved under ``wiki/``.
+
+    Both resolve to the same files under ``wiki/sources/images/``. The path is
+    containment-checked against the wiki root so traversal can't escape it.
+    """
+    kb_dir = _resolve_kb(kb)
+    wiki_dir = (kb_dir / "wiki").resolve()
+
+    stripped = path.lstrip("/")
+    # Normalize the two accepted prefixes to the on-disk location.
+    if stripped.startswith("sources/"):
+        rel = stripped
+        base = wiki_dir
+    elif stripped.startswith("images/"):
+        rel = f"sources/{stripped}"
+        base = wiki_dir
+    else:
+        raise HTTPException(status_code=400, detail="Image path must start with 'sources/' or 'images/'.")
+
+    target = (base / rel).resolve()
+    if not target.is_relative_to(wiki_dir):
+        raise HTTPException(status_code=400, detail="Invalid image path.")
+    if not target.is_file():
+        raise HTTPException(status_code=404, detail=f"Image not found: {path}")
+
+    media_type = mimetypes.guess_type(target.name)[0] or "application/octet-stream"
+    return FileResponse(target, media_type=media_type)
 
 
 @pages_router.post("/api/v1/page/delete", response_model=PageDeleteResponse)

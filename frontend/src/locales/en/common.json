@@ -10,11 +10,15 @@
     "refresh": "Refresh",
     "cancel": "Cancel"
   },
+  "on": "On",
+  "off": "Off",
   "fields": {
     "model": "Model",
     "wikiLanguage": "Wiki output language",
     "threshold": "PageIndex threshold (pages)",
-    "entityTypes": "Entity types"
+    "entityTypes": "Entity types",
+    "imagesEnabled": "Agent image output",
+    "imagesEnabledDesc": "When off, agents read text only (for gateways that reject image content)."
   },
   "entityTypes": {
     "placeholder": "Add a type, press Enter",

@@ -6,6 +6,7 @@ import { getGlobalConfig, patchGlobalConfig, type GlobalConfig, type GlobalConfi
 import ConnectorCards from '@/components/ConnectorCards'
 import AboutTab from '@/components/AboutTab'
 import EntityTypesEditor from '@/components/EntityTypesEditor'
+import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { UnLanguageDatalist, UN_LANG_LIST_ID } from '@/components/UnLanguageDatalist'
 
@@ -40,6 +41,8 @@ export default function Settings() {
   const [model, setModel] = useState('')
   const [language, setLanguage] = useState('')
   const [threshold, setThreshold] = useState('')
+  // Whether agents may return images (text-only for gateways that reject them).
+  const [imagesEnabled, setImagesEnabled] = useState(true)
   // Entity-extraction vocabulary, edited as chips. Seeded from the CLEANED
   // effective list (always includes "other"); diffed order-sensitively in
   // buildPatch. Server re-cleans on save, so client edits stay lightweight.
@@ -64,6 +67,7 @@ export default function Settings() {
     setLanguage(c.language)
     setThreshold(String(c.pageindex_threshold))
     setEntityTypes(c.entity_types)
+    setImagesEnabled(c.images_enabled ?? true)
     setKbRoot(c.kb_root ?? '')
     setApiBase(c.openai_api_base ?? '')
     setApiKey('')
@@ -117,6 +121,7 @@ export default function Settings() {
     if (a.length !== b.length || a.some((v, i) => v !== b[i])) {
       cfg.entity_types = entityTypes
     }
+    if (imagesEnabled !== config.images_enabled) cfg.images_enabled = imagesEnabled
     if (Object.keys(cfg).length > 0) patch.config = cfg
     // When kb_root is env-pinned the field is read-only and the effective value
     // is the OPENKB_KB_ROOT env root, so never diff/emit it — a Save would
@@ -132,7 +137,7 @@ export default function Settings() {
     if (clearKey) patch.api_key = null
     else if (apiKey !== '') patch.api_key = apiKey
     return { patch, dirty: Object.keys(patch).length > 0 }
-  }, [config, model, language, threshold, entityTypes, kbRoot, apiBase, apiKey, clearKey])
+  }, [config, model, language, threshold, entityTypes, imagesEnabled, kbRoot, apiBase, apiKey, clearKey])
 
   const dirty = useMemo(() => buildPatch().dirty, [buildPatch])
 
@@ -235,6 +240,23 @@ export default function Settings() {
                     </p>
                   )}
                 </div>
+              </div>
+
+              <div className="mt-4 flex items-center justify-between gap-4">
+                <div>
+                  <label className="text-[12px] font-medium text-muted-foreground">
+                    {t('common:fields.imagesEnabled')}
+                  </label>
+                  <p className="mt-0.5 text-[12px] text-muted-foreground">
+                    {t('settings:modelSection.imagesEnabledDesc')}
+                  </p>
+                </div>
+                <Switch
+                  checked={imagesEnabled}
+                  disabled={loading || !config}
+                  onCheckedChange={setImagesEnabled}
+                  aria-label={t('common:fields.imagesEnabled')}
+                />
               </div>
             </div>
 

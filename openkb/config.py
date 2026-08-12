@@ -37,6 +37,11 @@ DEFAULT_CONFIG: dict[str, Any] = {
     # global/KB list overrides it wholesale; resolve_entity_types cleans the
     # effective value on read.
     "entity_types": list(DEFAULT_ENTITY_TYPES),
+    # Whether agents may return images (get_image → ToolOutputImage). Some
+    # gateways/providers reject image content parts ("unknown variant
+    # `image_url`, expected `text`"), so this lets a deployment force the
+    # agents to text-only: get_image then returns a textual hint instead.
+    "images_enabled": True,
 }
 
 GLOBAL_CONFIG_DIR = Path.home() / ".config" / "openkb"
@@ -566,6 +571,7 @@ GLOBAL_SCALAR_KEYS: tuple[str, ...] = (
     "language",
     "pageindex_threshold",
     "entity_types",
+    "images_enabled",
 )
 
 

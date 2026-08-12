@@ -11,7 +11,8 @@
   "modelSection": {
     "title": "Model & threshold",
     "desc": "Global default model & threshold (written to ~/.config/openkb/global.yaml; each KB can inherit or override in its own settings)",
-    "thresholdInvalid": "Threshold must be a whole number of 1 or more."
+    "thresholdInvalid": "Threshold must be a whole number of 1 or more.",
+    "imagesEnabledDesc": "Let agents return images (get_image). Turn off for gateways that reject image content (agents then read text only)."
   },
   "credSection": {
     "title": "Default credentials",

@@ -11,7 +11,8 @@
   "modelSection": {
     "title": "Mô hình & ngưỡng",
     "desc": "Mô hình & ngưỡng mặc định toàn cục (được ghi vào ~/.config/openkb/global.yaml; mỗi KB có thể kế thừa hoặc ghi đè trong cài đặt riêng)",
-    "thresholdInvalid": "Ngưỡng phải là một số nguyên từ 1 trở lên."
+    "thresholdInvalid": "Ngưỡng phải là một số nguyên từ 1 trở lên.",
+    "imagesEnabledDesc": "Cho phép agent trả về hình ảnh (get_image). Tắt nếu gateway không hỗ trợ nội dung hình ảnh (agent sẽ chỉ đọc văn bản)."
   },
   "credSection": {
     "title": "Thông tin xác thực mặc định",

@@ -56,12 +56,17 @@ export interface KbConfig {
   pageindex_threshold: number
   /** CLEANED effective entity-extraction vocabulary (always includes "other"). */
   entity_types: string[]
+  /** Whether agents may return images for this KB (effective). */
+  images_enabled: boolean
   /** Plaintext LLM base URL (a config value, not a credential); null if unset. */
   openai_api_base: string | null
   /** Presence flag only — the raw key value is NEVER returned by the API. */
   has_api_key: boolean
   /** Which layer supplied each field's effective value. */
-  sources: Record<"model" | "language" | "pageindex_threshold" | "entity_types", ConfigSource>
+  sources: Record<
+    "model" | "language" | "pageindex_threshold" | "entity_types" | "images_enabled",
+    ConfigSource
+  >
   /** Raw global-layer values (null where global.yaml is silent). */
   global_values: {
     model: string | null
@@ -69,6 +74,7 @@ export interface KbConfig {
     pageindex_threshold: number | null
     /** RAW global list (not cleaned) — for the inherited badge. */
     entity_types: string[] | null
+    images_enabled: boolean | null
   }
 }
 
@@ -80,10 +86,14 @@ export interface KbConfig {
  * key" request, not "unchanged" or "clear".
  */
 export interface KbConfigPatch {
-  config?: Partial<Pick<KbConfig, "model" | "language" | "pageindex_threshold">> & {
+  config?: Partial<
+    Pick<KbConfig, "model" | "language" | "pageindex_threshold">
+  > & {
     /** A list sets/overrides for this KB; `null` reverts to inherited. Values
      *  are cleaned server-side (lowercase, `[a-z0-9 _-]`, dedupe, + "other"). */
     entity_types?: string[] | null
+    /** A bool sets/overrides for this KB; `null` reverts to inherited. */
+    images_enabled?: boolean | null
   }
   api_key?: string | null
   openai_api_base?: string | null

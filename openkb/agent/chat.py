@@ -920,7 +920,14 @@ def build_chat_session_agent(
 
     config = resolve_effective_config(kb_dir)[0]
     language = session.language or config.get("language", "en")
-    return build_chat_agent(kb_dir, session.model, language=language, bundle=bundle)
+    images_enabled = bool(config.get("images_enabled", True))
+    return build_chat_agent(
+        kb_dir,
+        session.model,
+        language=language,
+        bundle=bundle,
+        images_enabled=images_enabled,
+    )
 
 
 async def iter_chat_turn_events(
@@ -1014,7 +1021,10 @@ async def run_chat(
 
     config = resolve_effective_config(kb_dir)[0]
     language = session.language or config.get("language", "en")
-    agent = build_chat_agent(kb_dir, session.model, language=language)
+    images_enabled = bool(config.get("images_enabled", True))
+    agent = build_chat_agent(
+        kb_dir, session.model, language=language, images_enabled=images_enabled
+    )
 
     _print_header(session, kb_dir, style)
     if session.turn_count > 0:
@@ -1054,7 +1064,9 @@ async def run_chat(
                 return
             if action == "new_session":
                 session = ChatSession.new(kb_dir, session.model, session.language)
-                agent = build_chat_agent(kb_dir, session.model, language=language)
+                agent = build_chat_agent(
+                    kb_dir, session.model, language=language, images_enabled=images_enabled
+                )
                 prompt_session = _make_prompt_session(session, style, use_color, kb_dir)
             continue
 
