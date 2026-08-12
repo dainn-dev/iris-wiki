@@ -17,6 +17,11 @@ services:
       # Your knowledge base lives on the host; the entrypoint auto-registers it
       # (see docker/entrypoint.sh) so the Web UI lists it as KB "huggies".
       - ${OPENKB_KB_DIR:-C:\Users\hoang\Projects\iris-wiki\huggies}:/work
+      # Persist the global config (~/.config/openkb: global.yaml, .env, KB
+      # registry) on the HOST so settings like images_enabled / model defaults
+      # survive container rebuilds and image swaps instead of resetting to
+      # factory defaults every `docker compose up --build`.
+      - ${OPENKB_CONFIG_DIR:-C:\Users\hoang\.config\openkb}:/root/.config/openkb
     restart: unless-stopped
 
-# No named volume: the KB is bind-mounted from the host folder above.
+# No named volume: the KB and global config are bind-mounted from host folders.

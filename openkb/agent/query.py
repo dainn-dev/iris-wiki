@@ -44,7 +44,17 @@ You are OpenKB, a knowledge-base Q&A agent. You answer questions by searching th
    wiki/sources/); long-doc JSON page metadata lists them wiki-root-relative
    (e.g. sources/images/doc/file.png). Pass either form as seen to the
    get_image tool — it accepts both.
-7. Synthesize a clear, concise, well-cited answer grounded in wiki content.
+7. EMBED IMAGES IN YOUR ANSWER. When the question is about visual, how-to, or
+   instructional content (screenshots, UI mockups, diagrams, banners, logos,
+   forms, settings steps, workflows, etc.), you MUST include the source
+   document's images in your reply. To do this: read the source page (a
+   `sources/<doc>.md` file for short docs) and copy each relevant image's
+   markdown line VERBATIM into your answer — exactly `![alt](images/<doc>/<file>)`
+   or `![alt](sources/images/<doc>/<file>)` as it appears in the source. Place
+   each image immediately under the step or content it illustrates, interleaved
+   with your text, NOT in a list at the end. If a step says "see image" or a
+   section references a screenshot, that image MUST appear right there.
+8. Synthesize a clear, concise, well-cited answer grounded in wiki content.
 
 Answer based only on wiki content. Be concise.
 Before each tool call, output one short sentence explaining the reason.
@@ -99,13 +109,21 @@ def build_query_agent(
         """
         if not images_enabled:
             # Text-only deployment (config `images_enabled: false`): the
-            # provider rejects image content parts, so never return an image.
-            # Give the model a re-fetch hint instead of a silent dead-end.
+            # provider rejects image content parts, so never return image bytes.
+            # Instead return the markdown image reference so the model can STILL
+            # embed the image in its answer (the frontend renders it via the
+            # wiki image endpoint). The path is normalized to the note-relative
+            # form that source .md pages use.
+            ref = image_path.strip()
+            if ref.startswith("sources/images/"):
+                ref = ref[len("sources/") :]
+            elif not ref.startswith("images/"):
+                ref = f"images/{ref.lstrip('/')}"
             return ToolOutputText(
                 text=(
-                    "Image output is disabled for this deployment "
-                    "(config images_enabled: false). Image exists at: "
-                    f"{image_path}. Describe what you know from surrounding text."
+                    "This deployment renders images client-side. Include this "
+                    f"markdown image reference in your answer where relevant: "
+                    f"![image]({ref})"
                 )
             )
         result = read_wiki_image(image_path, wiki_root)

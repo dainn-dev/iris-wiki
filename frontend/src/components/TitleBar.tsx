@@ -60,7 +60,7 @@ function ConnectionStatus() {
 
 export default function TitleBar() {
   const title = useTitle()
-  const heading = `IRIS Studio${title ? ` — ${title}` : ""}`
+  const heading = `IRIS WIKI${title ? ` — ${title}` : ""}`
 
   // Desktop shell: fake traffic-lights + a draggable title region.
   if (isDesktopShell) {
@@ -83,7 +83,7 @@ export default function TitleBar() {
   }
 
   // Browser tab (today's only delivery): no title strip at all — the browser
-  // tab already shows the app title, so an in-page "IRIS Studio — <route>"
+  // tab already shows the app title, so an in-page "IRIS WIKI — <route>"
   // bar is dead chrome. The desktop-shell branch above is kept for Sub-project C.
   return null
 }
