@@ -1,0 +1,28 @@
+{
+  "card": { "done": "Đã tạo", "open": "Mở" },
+  "deck": { "subtitle": "Deck HTML · {{name}}" },
+  "file": { "subtitle": "File HTML · {{name}}" },
+  "graph": {
+    "label": "Đồ thị tri thức",
+    "empty": "Chưa có đồ thị khái niệm để trực quan hóa",
+    "subtitle_one": "{{count}} khái niệm · {{edges}} liên kết",
+    "subtitle_other": "{{count}} khái niệm · {{edges}} liên kết",
+    "subtitleWithTypes_one": "{{count}} khái niệm · {{edges}} liên kết · {{types}} loại",
+    "subtitleWithTypes_other": "{{count}} khái niệm · {{edges}} liên kết · {{types}} loại"
+  },
+  "skill": {
+    "downloadError": "Không tải được gói kỹ năng: {{error}}",
+    "body": "Kỹ năng đã được tạo dưới dạng một thư mục có thể cài đặt. Tải <0>.zip</0>, giải nén vào thư mục skills của Agent (Claude Code / Codex / Gemini CLI), và sẵn sàng dùng.",
+    "download": "Tải gói kỹ năng (.zip)"
+  },
+  "unknown": "Artifact không xác định",
+  "previewUnsupported": "Loại artifact này không thể xem trước",
+  "loadError": "Không tải được artifact: {{error}}",
+  "openError": "Không mở được: {{error}}",
+  "downloadError": "Tải xuống thất bại: {{error}}",
+  "panel": {
+    "resize": "Kéo để thay đổi độ rộng",
+    "openTab": "Mở trong tab mới",
+    "download": "Tải xuống"
+  }
+}

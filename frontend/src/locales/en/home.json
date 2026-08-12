@@ -3,5 +3,6 @@
   "ready": "Knowledge compiled · <0>{{docs}}</0> docs · <1>{{kbs}}</1> KBs",
   "recentSessions": "Recent sessions",
   "untitledSession": "Untitled session",
-  "tagline": "Powered by OpenKB · your knowledge is always plain Markdown, and always yours"
+  "deleteSession": "Delete session",
+  "tagline": "Powered by IRIS · your knowledge is always plain Markdown, and always yours"
 }

@@ -80,7 +80,7 @@ export default function AppSidebar() {
         <div className="w-6 h-6 rounded-apple-sm bg-accent-brand text-white grid place-items-center text-[13px] font-extrabold tracking-tighter">
           K
         </div>
-        <div className="text-[15px] font-bold tracking-tight">OpenKB Studio</div>
+        <div className="text-[15px] font-bold tracking-tight">IRIS Studio</div>
       </div>
 
       {/* 主导航（不含设置，设置已下沉到底部） */}

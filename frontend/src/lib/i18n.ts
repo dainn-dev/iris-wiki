@@ -2,11 +2,11 @@ import i18n from "i18next"
 import { initReactI18next } from "react-i18next"
 import resourcesToBackend from "i18next-resources-to-backend"
 
-export const SUPPORTED_LANGUAGES = ["zh", "en"] as const
+export const SUPPORTED_LANGUAGES = ["vi", "en"] as const
 export type Language = (typeof SUPPORTED_LANGUAGES)[number]
 
 /** All namespaces. Only `common` is preloaded (see `ns` below); every other
- * namespace lazy-loads its {zh,en} JSON on the first useTranslation('<ns>'),
+ * namespace lazy-loads its {vi,en} JSON on the first useTranslation('<ns>'),
  * code-split per locale-namespace by Vite. */
 export const NAMESPACES = [
   "common",
@@ -29,7 +29,7 @@ void i18n
   )
   .use(initReactI18next)
   .init({
-    fallbackLng: "zh",
+    fallbackLng: "en",
     supportedLngs: [...SUPPORTED_LANGUAGES],
     ns: ["common"], // preload only the always-visible chrome; rest are lazy
     defaultNS: "common",

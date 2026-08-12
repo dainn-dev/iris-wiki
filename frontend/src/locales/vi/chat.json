@@ -1,0 +1,57 @@
+{
+  "phase": {
+    "generating": "Đang tạo (gọi LLM, có thể mất vài phút)…",
+    "done": "Xong",
+    "preparing": "Đang chuẩn bị…",
+    "buildingGraph": "Đang xây dựng đồ thị khái niệm…"
+  },
+  "artifact": { "failed": "Tạo thất bại" },
+  "sources": {
+    "heading": "Nguồn",
+    "pageTip": "Bấm để xem trang wiki này",
+    "internalTip": "Nội dung nội bộ của tài liệu dài (PageIndex); không có trang độc lập để mở"
+  },
+  "reading": {
+    "page": "Đang đọc <0>{{label}}</0>",
+    "doc": "Đang đọc tài liệu dài <0>{{label}}</0>",
+    "thinking": "Đang suy nghĩ…"
+  },
+  "step": {
+    "read": "Đã đọc <0>{{path}}</0>"
+  },
+  "requestError": "Yêu cầu thất bại: {{error}}",
+  "savedTo": "Đã lưu vào {{path}}",
+  "usage": {
+    "deck": "Cách dùng: /deck <tên> <ý định>, vd. “retrieval-intro giới thiệu truy xuất không vector cho kỹ sư”",
+    "skill": "Cách dùng: /skill <tên> <ý định>, vd. “pageindex-expert chuyên gia truy xuất tài liệu dài Q&A”"
+  },
+  "genErrorToast": "Tạo thất bại: {{error}}",
+  "requestErrorToast": "Yêu cầu thất bại: {{error}}",
+  "errors": {
+    "noKb": "Không xác định được knowledge base mà phiên này thuộc về; vui lòng vào từ trang chủ",
+    "loadSession": "Không tải được phiên: {{error}}",
+    "openSource": "Không mở được nguồn {{path}}: {{error}}",
+    "deleteSession": "Không xóa được phiên: {{error}}"
+  },
+  "sessionDeleted": "Đã xóa phiên",
+  "deleteSession": "Xóa phiên",
+  "deleteConfirm": "Xóa?",
+  "deleteCancel": "Hủy",
+  "newSession": "Phiên mới",
+  "inputPlaceholder": "Hỏi tiếp, hoặc gõ / để xem lệnh…",
+  "commands": {
+    "paletteHeading": "Lệnh · trình tạo",
+    "deck": { "label": "Tạo slide", "desc": "Biên dịch kiến thức thành một deck HTML đơn file" },
+    "skill": { "label": "Chưng cất kỹ năng", "desc": "Tạo một Agent Skill có thể cài đặt" },
+    "visualize": { "label": "Đồ thị tri thức", "desc": "Tạo một đồ thị khái niệm tương tác" }
+  },
+  "input": {
+    "cmdPlaceholder": "{{label}}: mô tả ý định của bạn…",
+    "defaultPlaceholder": "Hỏi knowledge base của bạn, hoặc gõ / để xem lệnh…",
+    "selectKb": "Chọn knowledge base",
+    "noKbs": "Chưa có knowledge base nào",
+    "current": "Hiện tại",
+    "stop": "Dừng",
+    "hint": "Gõ <0>/</0> để xem lệnh"
+  }
+}

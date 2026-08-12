@@ -1,0 +1,61 @@
+{
+  "loading": "Đang tải…",
+  "pageLoadError": "Không tải được trang: {{error}}",
+  "noChanges": "Không có thay đổi để lưu",
+  "saveError": "Lưu thất bại: {{error}}",
+  "configLoadError": "Không tải được cấu hình: {{error}}",
+  "actions": {
+    "newKb": "Knowledge base mới",
+    "close": "Đóng",
+    "refresh": "Làm mới",
+    "cancel": "Hủy"
+  },
+  "fields": {
+    "model": "Mô hình",
+    "wikiLanguage": "Ngôn ngữ đầu ra wiki",
+    "threshold": "Ngưỡng PageIndex (số trang)",
+    "entityTypes": "Loại thực thể"
+  },
+  "entityTypes": {
+    "placeholder": "Thêm một loại, nhấn Enter",
+    "removeAria": "Xóa loại {{type}}",
+    "always": "luôn bao gồm"
+  },
+  "errors": {
+    "requestFailed": "Yêu cầu thất bại",
+    "uploadFailed": "Tải lên thất bại: {{detail}}"
+  },
+  "nav": {
+    "home": "Trang chủ",
+    "kbs": "Knowledge bases",
+    "settings": "Cài đặt"
+  },
+  "titlebar": {
+    "chat": "Trò chuyện",
+    "local": "Cục bộ"
+  },
+  "theme": {
+    "light": "Sáng",
+    "dark": "Tối",
+    "system": "Hệ thống",
+    "toggleTitle": "Chủ đề: {{label}} (bấm để chuyển)",
+    "toggleAria": "Chủ đề: {{label}}"
+  },
+  "language": {
+    "vi": "Tiếng Việt",
+    "en": "English",
+    "toggleTitle": "Ngôn ngữ: {{label}} (bấm để chuyển)",
+    "toggleAria": "Ngôn ngữ: {{label}}"
+  },
+  "auth": {
+    "title": "Cần mã truy cập",
+    "description": "Máy chủ này có mã truy cập được cấu hình (OPENKB_API_TOKEN). Nhập mã để tiếp tục; mã chỉ được lưu trong trình duyệt này.",
+    "tokenLabel": "Mã truy cập",
+    "baseLabel": "Địa chỉ API (tùy chọn; để trống để dùng origin hiện tại)",
+    "connect": "Kết nối"
+  },
+  "connector": {
+    "tooltip": "Đồng bộ đám mây đang phát triển · bình chọn trên GitHub",
+    "vote": "Muốn dùng? Bình chọn"
+  }
+}

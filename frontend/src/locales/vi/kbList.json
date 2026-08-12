@@ -1,0 +1,22 @@
+{
+  "notCompiled": "Chưa biên dịch",
+  "updatedAt": "Cập nhật {{date}}",
+  "title": "Knowledge bases",
+  "subtitle": "Mỗi knowledge base là một wiki được biên dịch liên tục, có thể gắn nhiều nguồn dữ liệu",
+  "docsLabel": "Tài liệu",
+  "rawReady": "raw/ sẵn sàng",
+  "rawMissing": "Không có raw/",
+  "create": {
+    "description": "Đặt tên cho knowledge base mới của bạn. Mô hình và thông tin xác thực kế thừa các mặc định toàn cục và có thể điều chỉnh sau trong cài đặt của nó.",
+    "nameLabel": "Tên",
+    "namePlaceholder": "vd. my-kb",
+    "cancel": "Hủy",
+    "submit": "Tạo",
+    "submitting": "Đang tạo…",
+    "previewLabel": "Sẽ được tạo tại {{path}}",
+    "advancedToggle": "Đường dẫn tùy chỉnh",
+    "customPathLabel": "Đường dẫn tùy chỉnh",
+    "customPathPlaceholder": "/đường/dẫn/tuyệt/đối/kb",
+    "customPathHint": "Để trống để dùng thư mục gốc mặc định"
+  }
+}

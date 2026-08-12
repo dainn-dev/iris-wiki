@@ -1,0 +1,102 @@
+{
+  "settingsButton": "Cài đặt knowledge base",
+  "loadError": "Không tải được: {{error}}",
+  "wikiNote": "wiki/ là thư mục Markdown thuần trên máy này — dữ liệu luôn thuộc về bạn",
+  "reader": {
+    "empty": "Knowledge base này chưa có trang nào được biên dịch",
+    "selectPage": "Chọn một trang bên trái để xem nội dung"
+  },
+  "upload": {
+    "added": "{{count}} đã thêm",
+    "skipped": "{{count}} đã bỏ qua",
+    "failed": "{{count}} thất bại",
+    "errorToast": "Tải lên thất bại: {{summary}}",
+    "reasonSuffix": " ({{reason}})",
+    "partialToast": "Thành công một phần: {{summary}}",
+    "successToast": "Tải lên hoàn tất: {{summary}}",
+    "existsToast": "Tài liệu đã tồn tại, không thêm mới: {{summary}}",
+    "incompleteToast": "Tải lên bị gián đoạn: không nhận được tín hiệu hoàn tất; làm mới để kiểm tra kết quả",
+    "note": "Tài liệu tải lên đi vào thư mục raw/ cục bộ và được biên dịch tự động vào KB; file vẫn nằm trên máy này",
+    "inProgress": "Đang tải lên và biên dịch…",
+    "dropzone": "Thả file vào đây, hoặc bấm để chọn",
+    "dropzoneHint": "PDF / Word / Markdown / văn bản và hơn nữa; hỗ trợ chọn nhiều file",
+    "progressHeading": "Tiến trình tải lên · {{count}}",
+    "elapsedRunning": "Đã trôi qua {{time}}",
+    "elapsedDone": "Hoàn tất trong {{time}}",
+    "fileStatus": {
+      "pending": "Đang chờ",
+      "processing": "Đang biên dịch…",
+      "added": "Đã thêm",
+      "skipped": "Đã bỏ qua",
+      "failed": "Thất bại"
+    }
+  },
+  "docs": {
+    "heading": "Tài liệu đã tải lên · {{count}}",
+    "empty": "Chưa có tài liệu · chúng được biên dịch tự động vào KB sau khi tải lên",
+    "pages_one": "{{count}} trang",
+    "pages_other": "{{count}} trang",
+    "reader": {
+      "open": "Đọc tài liệu",
+      "title": "Tài liệu",
+      "readonly": "Chỉ đọc",
+      "close": "Đóng",
+      "loading": "Đang tải tài liệu…",
+      "error": "Không tải được tài liệu: {{error}}",
+      "retry": "Thử lại",
+      "emptyDoc": "Tài liệu này không có văn bản được trích xuất."
+    },
+    "delete": {
+      "action": "Xóa tài liệu",
+      "prompt": "Xóa?",
+      "confirm": "Xóa",
+      "cancel": "Hủy",
+      "success": "Đã xóa {{name}}",
+      "error": "Xóa thất bại: {{error}}",
+      "partial": "Đã xóa file cục bộ, nhưng dọn dẹp chỉ mục từ xa thất bại: {{name}}",
+      "reasonSuffix": " ({{reason}})",
+      "multiple": "Xóa thất bại: {{message}} (ứng viên: {{names}})"
+    }
+  },
+  "pageOps": {
+    "edit": "Sửa",
+    "delete": "Xóa",
+    "editorAria": "Mã nguồn trang (Markdown)",
+    "deletePrompt": "Xóa {{title}}?",
+    "deleteImpact_one": "{{count}} trang liên kết đến đây — liên kết của nó sẽ trở thành văn bản thuần",
+    "deleteImpact_other": "{{count}} trang liên kết đến đây — liên kết của chúng sẽ trở thành văn bản thuần",
+    "deleteNoBacklinks": "Không có trang nào khác liên kết đến đây",
+    "deleteConfirm": "Xóa trang",
+    "deleteSuccess": "Đã xóa {{title}}",
+    "deleteError": "Xóa thất bại: {{error}}",
+    "save": "Lưu",
+    "saveSuccess": "Trang đã lưu",
+    "saveError": "Lưu thất bại: {{error}}",
+    "ghostsDemoted": "Các liên kết này không phân giải được và trở thành văn bản thuần: {{links}}",
+    "editRecompileNote": "Sửa thủ công có thể bị ghi đè khi KB này được biên dịch lại.",
+    "links": {
+      "heading": "Liên kết trang",
+      "outlinks": "Trang này liên kết tới",
+      "backlinks": "Các trang liên kết đến đây",
+      "none": "Không có",
+      "error": "Không tải được liên kết: {{error}}"
+    }
+  },
+  "remote": {
+    "heading": "Nguồn dữ liệu từ xa",
+    "note": "Bộ kết nối đám mây đang phát triển và chưa khả dụng · muốn dùng? Bấm vào thẻ để bình chọn trên GitHub"
+  },
+  "overview": {
+    "index": { "label": "Chỉ mục", "caption": "wiki gốc" },
+    "concepts": { "label": "Khái niệm", "caption": "liên kết chéo" },
+    "entities": { "label": "Thực thể", "caption": "người · tổ chức" },
+    "summaries": { "label": "Tóm tắt", "caption": "theo tài liệu" },
+    "reports": { "label": "Báo cáo", "caption": "lint · biên dịch lại" },
+    "documents": { "label": "Tài liệu", "caption": "đã biên dịch" }
+  },
+  "pageList": {
+    "empty": "Chưa có trang thuộc loại này",
+    "prev": "Trước",
+    "next": "Tiếp"
+  }
+}

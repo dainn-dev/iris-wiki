@@ -1,0 +1,45 @@
+{
+  "tabs": {
+    "model": "Mô hình",
+    "general": "Chung",
+    "conn": "Nguồn dữ liệu",
+    "about": "Giới thiệu"
+  },
+  "savedToast": "Đã lưu mặc định toàn cục",
+  "saveChanges": "Lưu thay đổi",
+  "unsaved": "Thay đổi chưa lưu",
+  "modelSection": {
+    "title": "Mô hình & ngưỡng",
+    "desc": "Mô hình & ngưỡng mặc định toàn cục (được ghi vào ~/.config/openkb/global.yaml; mỗi KB có thể kế thừa hoặc ghi đè trong cài đặt riêng)",
+    "thresholdInvalid": "Ngưỡng phải là một số nguyên từ 1 trở lên."
+  },
+  "credSection": {
+    "title": "Thông tin xác thực mặc định",
+    "desc": "Thông tin xác thực API mặc định toàn cục (được ghi vào ~/.config/openkb/.env; .env của riêng KB và biến môi trường có quyền ưu tiên)",
+    "clearPending": "Đánh dấu để xóa; có hiệu lực khi lưu",
+    "undoClear": "Hoàn tác"
+  },
+  "general": {
+    "langDesc": "Ngôn ngữ đầu ra được viết vào lời nhắc biên dịch, vd. en / Tiếng Việt / 日本語",
+    "entityTypesDesc": "Từ vựng dùng để phân loại thực thể được trích xuất lúc biên dịch; mỗi KB có thể kế thừa hoặc ghi đè trong cài đặt riêng.",
+    "entityTypesNote": "Thay đổi chỉ áp dụng cho các lần biên dịch lại sau; các trang thực thể hiện có giữ nguyên loại.",
+    "kbRootLabel": "Thư mục gốc knowledge base",
+    "kbRootDesc": "Vị trí mặc định cho knowledge base mới (<gốc>/<tên>); để trống để khôi phục mặc định tích hợp. Từng KB có thể đặt đường dẫn tùy chỉnh lúc tạo.",
+    "kbRootPlaceholder": "vd. ~/openkb",
+    "kbRootEnvPinned": "Bị khóa bởi biến môi trường OPENKB_KB_ROOT; chỉnh sửa ở đây sẽ không có hiệu lực cho đến khi bỏ biến đó."
+  },
+  "conn": {
+    "note": "Bộ kết nối nguồn dữ liệu đám mây (OAuth / S3) đang phát triển và chưa khả dụng; hiện tại hãy tải file cục bộ từ trang chi tiết KB. Muốn có bộ kết nối? Bấm vào thẻ bên dưới để bình chọn trên GitHub và giúp chúng tôi ưu tiên."
+  },
+  "about": {
+    "links": {
+      "repo": "Kho GitHub",
+      "pageindex": "PageIndex (công cụ truy xuất)",
+      "docs": "Tài liệu docs.pageindex.ai",
+      "company": "Vectify AI (công ty)"
+    },
+    "blurb": "Biên dịch tài liệu thô thành một knowledge base dạng wiki có cấu trúc, liên kết chéo, được hỗ trợ bởi truy xuất tài liệu dài dựa trên suy luận, không vector của PageIndex.",
+    "byline": "Xây dựng bởi Vectify AI · một phần của dòng sản phẩm PageIndex",
+    "latestRelease": "Xem bản phát hành mới nhất →"
+  }
+}

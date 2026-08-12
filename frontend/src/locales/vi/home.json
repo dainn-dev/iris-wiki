@@ -1,0 +1,8 @@
+{
+  "greeting": "Bạn muốn hỏi gì?",
+  "ready": "Kiến thức đã biên dịch · <0>{{docs}}</0> tài liệu · <1>{{kbs}}</1> KB",
+  "recentSessions": "Phiên gần đây",
+  "untitledSession": "Phiên chưa đặt tên",
+  "deleteSession": "Xóa phiên",
+  "tagline": "Được hỗ trợ bởi IRIS · kiến thức của bạn luôn là Markdown thuần, và luôn thuộc về bạn"
+}

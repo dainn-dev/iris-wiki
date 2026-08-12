@@ -25,9 +25,9 @@ export default function AboutTab() {
   return (
     <div className="mt-5 max-w-[560px] space-y-6 anim-fade-up">
       <div className="flex items-center gap-3">
-        <span className="grid h-11 w-11 place-items-center rounded-2xl bg-accent-brand text-[18px] font-black text-white shrink-0">K</span>
+        <span className="grid h-11 w-11 place-items-center rounded-2xl bg-accent-brand text-[18px] font-black text-white shrink-0">I</span>
         <div className="min-w-0">
-          <div className="text-[16px] font-bold text-foreground">OpenKB</div>
+          <div className="text-[16px] font-bold text-foreground">IRIS</div>
           <div className="text-[12.5px] text-muted-foreground">
             Open LLM Knowledge Base · <span className="tabular-nums">v{version ?? '—'}</span> · Apache-2.0
           </div>

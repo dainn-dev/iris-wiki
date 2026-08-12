@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react"
 import { useLocation, useNavigate } from "react-router"
 import { useTranslation, Trans } from "react-i18next"
-import { ArrowRight, Clock } from "lucide-react"
+import { ArrowRight, Clock, Trash2 } from "lucide-react"
 import ChatInput, { type SlashCommand } from "@/components/ChatInput"
 import { listKbs, type KbSummary } from "@/api/kb"
-import { listSessions, type ChatSessionItem } from "@/api/chat"
+import { deleteSession, listSessions, type ChatSessionItem } from "@/api/chat"
 import { cn } from "@/lib/utils"
 
 /** Decorative accent colors, cycled by KB position — the API carries no color. */
@@ -69,6 +69,15 @@ export default function Home() {
     })
   }
 
+  const onDeleteSession = async (s: RecentSession) => {
+    try {
+      await deleteSession(s.kb, s.id)
+      setRecent((prev) => prev.filter((x) => x.kb !== s.kb || x.id !== s.id))
+    } catch (e) {
+      console.error("delete session failed", e)
+    }
+  }
+
   return (
     <div className="h-full flex flex-col">
       {/* 上方：问候 + 最近会话（可滚动） */}
@@ -107,8 +116,29 @@ export default function Home() {
                       `anim-d${(i % 4) + 1}`,
                     )}
                   >
-                    <div className="text-[14px] font-semibold leading-snug line-clamp-2 min-h-[40px]">
-                      {s.title || t("untitledSession")}
+                    <div className="flex items-start gap-2">
+                      <div className="text-[14px] font-semibold leading-snug line-clamp-2 min-h-[40px] flex-1">
+                        {s.title || t("untitledSession")}
+                      </div>
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        title={t("deleteSession")}
+                        aria-label={t("deleteSession")}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onDeleteSession(s)
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.stopPropagation()
+                            onDeleteSession(s)
+                          }
+                        }}
+                        className="w-7 h-7 rounded-lg grid place-items-center text-muted-foreground/50 hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </span>
                     </div>
                     <div className="mt-3 flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
                       <span className={cn("w-1.5 h-1.5 rounded-full", dotFor(s.kbIndex))} />

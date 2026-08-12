@@ -31,7 +31,7 @@ function checkBaseSafety(): void {
     if (url.origin !== window.location.origin && url.protocol === "http:") {
       baseSafetyWarned = true
       console.warn(
-        `[OpenKB] API base "${base}" is cross-origin and served over http:. ` +
+        `[IRIS] API base "${base}" is cross-origin and served over http:. ` +
           "Your API token is sent to this host in the clear on every request. " +
           "Use https for a remote API, or verify this URL is trusted.",
       )

@@ -42,7 +42,7 @@
     "toggleAria": "Theme: {{label}}"
   },
   "language": {
-    "zh": "中文",
+    "vi": "Tiếng Việt",
     "en": "English",
     "toggleTitle": "Language: {{label}} (click to switch)",
     "toggleAria": "Language: {{label}}"
