@@ -1,0 +1,25 @@
+# Heavy local artifacts — never copied into the image
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+build/
+web/
+
+# Knowledge base / test artifacts
+raw/
+wiki/
+.openkb/
+output/
+kbs/
+
+# Local only
+docs/internal/
+.claude/
+*.db
+.env
+
+# Frontend node modules (installed fresh in the build stage)
+frontend/node_modules/

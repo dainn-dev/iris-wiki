@@ -1,0 +1,22 @@
+services:
+  openkb:
+    build:
+      context: .
+    image: openkb:latest
+    ports:
+      - "7566:7566"
+    environment:
+      # Your LLM gateway (any OpenAI-compatible / LiteLLM provider).
+      - LLM_API_KEY=${LLM_API_KEY:-sk-4551db1cb0094b3e-2cd0bd-f502824a}
+      - OPENAI_API_BASE=${OPENAI_API_BASE:-https://open-claude.dainn.online/v1}
+      # Model used by openkb-init for new KBs; KB-level config.yaml wins per KB.
+      # - OPENKB_MODEL=openai/opencode-go/deepseek-v4-flash
+      # Require a bearer token when the server is exposed publicly.
+      # - OPENKB_API_TOKEN=${OPENKB_API_TOKEN:-}
+    volumes:
+      # Your knowledge base lives on the host; the entrypoint auto-registers it
+      # (see docker/entrypoint.sh) so the Web UI lists it as KB "huggies".
+      - ${OPENKB_KB_DIR:-C:\Users\hoang\Projects\iris-wiki\huggies}:/work
+    restart: unless-stopped
+
+# No named volume: the KB is bind-mounted from the host folder above.
