@@ -501,3 +501,63 @@ class KbConfigPatchRequest(BaseModel):
     config: dict[str, Any] | None = None
     api_key: SecretStr | None = None
     openai_api_base: str | None = None
+
+
+class GdriveStatusResponse(BaseModel):
+    kb: str
+    connected: bool
+    has_credentials: bool
+    oauth_configured: bool
+    auth_mode: str | None = None
+    folder_id: str | None = None
+    folder_name: str | None = None
+    enabled: bool = False
+    poll_seconds: int = 300
+    last_sync_at: str | None = None
+    error: str | None = None
+    file_count: int = 0
+    active: bool = False
+    counters: dict[str, int] = Field(default_factory=dict)
+
+
+class GdriveOAuthStartResponse(BaseModel):
+    auth_url: str
+
+
+class GdriveConnectRequest(BaseModel):
+    kb: str = Field(..., min_length=1)
+    service_account_json: str = Field(..., min_length=2)
+    folder_id: str | None = None
+
+
+class GdriveFolderItem(BaseModel):
+    id: str
+    name: str
+
+
+class GdriveFolderListResponse(BaseModel):
+    kb: str
+    parent_id: str
+    folders: list[GdriveFolderItem]
+
+
+class GdriveFolderRequest(BaseModel):
+    kb: str = Field(..., min_length=1)
+    folder_id: str = Field(..., min_length=1)
+
+
+class GdriveSyncResult(BaseModel):
+    kb: str
+    added: int = 0
+    skipped: int = 0
+    failed: int = 0
+    removed: int = 0
+
+
+class GdriveDisconnectResponse(BaseModel):
+    kb: str
+    disconnected: bool = True
+
+
+class GdriveKbRequest(BaseModel):
+    kb: str = Field(..., min_length=1)

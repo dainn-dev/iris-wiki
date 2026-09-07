@@ -60,6 +60,41 @@
   },
   "connector": {
     "tooltip": "Cloud sync is in development · vote for it on GitHub",
-    "vote": "Want it? Vote"
+    "vote": "Want it? Vote",
+    "gdrive": {
+      "title": "Google Drive",
+      "disconnected": "Not connected",
+      "pickKb": "Select a knowledge base to connect Google Drive.",
+      "pickFolder": "Connected · choose a folder to sync",
+      "syncingFolder": "Syncing “{{name}}”",
+      "connectGoogle": "Connect with Google",
+      "connectSa": "Use service account",
+      "oauthMissing": "Set GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET on the server",
+      "chooseFolder": "Choose folder",
+      "syncNow": "Sync now",
+      "pause": "Pause sync",
+      "resume": "Resume sync",
+      "disconnect": "Disconnect",
+      "polling": "polling",
+      "paused": "paused",
+      "lastSync": "Last sync {{time}}",
+      "fileCount_one": "{{count}} file tracked",
+      "fileCount_other": "{{count}} files tracked",
+      "connectedToast": "Google Drive connected",
+      "errorToast": "Google Drive connection failed",
+      "folderSetToast": "Folder connected · syncing",
+      "pausedToast": "Drive sync paused",
+      "resumedToast": "Drive sync resumed",
+      "disconnectedToast": "Google Drive disconnected",
+      "syncToast": "Drive sync: {{added}} added, {{skipped}} skipped, {{failed}} failed, {{removed}} removed",
+      "saTitle": "Service account",
+      "saDesc": "Paste a Google service-account JSON key. Share the Drive folder with the account email (client_email).",
+      "folderIdOptional": "Folder ID (optional)",
+      "pickerDesc": "Open a folder to browse its children, or paste a folder ID from the Drive URL.",
+      "noFolders": "No folders here. Paste a folder ID if this account only has a shared folder.",
+      "useFolder": "Use",
+      "useThisFolder": "Use this folder",
+      "usePastedId": "Use pasted ID"
+    }
   }
 }

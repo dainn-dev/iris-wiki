@@ -9,10 +9,23 @@ services:
       # Your LLM gateway (any OpenAI-compatible / LiteLLM provider).
       - LLM_API_KEY=${LLM_API_KEY:-sk-4551db1cb0094b3e-2cd0bd-f502824a}
       - OPENAI_API_BASE=${OPENAI_API_BASE:-https://open-claude.dainn.online/v1}
-      # Model used by openkb-init for new KBs; KB-level config.yaml wins per KB.
-      # - OPENKB_MODEL=openai/opencode-go/deepseek-v4-flash
+      # Model used for NEW KBs (the /init endpoint and openkb-init); the
+      # KB-level config.yaml wins per KB. `openai/` prefix is required so
+      # LiteLLM routes cx/* to the OpenAI-compatible base above.
+      - OPENKB_MODEL=${OPENKB_MODEL:-openai/cx/gpt-5.6-sol}
+      # The open-claude.dainn.online gateway blocks the official OpenAI SDK
+      # User-Agent; override it on every LLM request for new KBs.
+      - OPENKB_EXTRA_HEADERS=${OPENKB_EXTRA_HEADERS:-{"User-Agent":"python-urllib/3.12"}}
       # Require a bearer token when the server is exposed publicly.
       # - OPENKB_API_TOKEN=${OPENKB_API_TOKEN:-}
+      # Google Drive connector (optional). Enable Drive API in Google Cloud
+      # Console, create an OAuth web client, and add the redirect URI
+      # http://localhost:7566/api/v1/connectors/gdrive/oauth/callback
+      # (or your public origin). For Docker-only sync, share a Drive folder
+      # with a service-account email and paste the JSON key in the Workbench.
+      - GOOGLE_OAUTH_CLIENT_ID=${GOOGLE_OAUTH_CLIENT_ID:-}
+      - GOOGLE_OAUTH_CLIENT_SECRET=${GOOGLE_OAUTH_CLIENT_SECRET:-}
+      - GOOGLE_OAUTH_REDIRECT_URI=${GOOGLE_OAUTH_REDIRECT_URI:-http://localhost:7566/api/v1/connectors/gdrive/oauth/callback}
     volumes:
       # Your knowledge base lives on the host; the entrypoint auto-registers it
       # (see docker/entrypoint.sh) so the Web UI lists it as KB "huggies".

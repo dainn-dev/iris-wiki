@@ -31,6 +31,7 @@ from openkb.agent.chat_session import delete_session, list_sessions, load_sessio
 from openkb.agent.query import build_run_config_from_bundle, run_query
 from openkb.api_config import apply_kb_config_patch, read_kb_config
 from openkb.api_config_router import config_router
+from openkb.api_connectors_router import connectors_router
 from openkb.api_documents_router import documents_router
 from openkb.api_graph import graph_router
 from openkb.api_helpers import (
@@ -110,6 +111,7 @@ from openkb.config import (
     resolve_init_kb_dir,
     validate_kb_name,
 )
+from openkb.connectors.sync_service import GDriveSyncRegistry
 from openkb.log import append_log
 from openkb.watch_service import WatchRegistry
 
@@ -126,6 +128,7 @@ def create_app() -> FastAPI:
     load_dotenv()
 
     registry = WatchRegistry()
+    gdrive_registry = GDriveSyncRegistry()
 
     # Per-KB asyncio locks for async mutation endpoints (lint/recompile).
     # kb_ingest_lock tracks reentrancy in threading.local, but the event loop
@@ -155,12 +158,15 @@ def create_app() -> FastAPI:
                 "This is fine for local use; set OPENKB_API_TOKEN to require a "
                 "bearer token before exposing the server on a reachable interface."
             )
+        gdrive_registry.resume_all()
         try:
             yield
         finally:
             registry.stop_all()
+            gdrive_registry.stop_all()
 
     app = FastAPI(title="OpenKB API", lifespan=lifespan)
+    app.state.gdrive_registry = gdrive_registry
 
     _configure_cors(app)
     app.include_router(graph_router)
@@ -169,6 +175,7 @@ def create_app() -> FastAPI:
     app.include_router(kbs_router)
     app.include_router(pages_router)
     app.include_router(documents_router)
+    app.include_router(connectors_router)
 
     @app.get("/api/v1/kbs", response_model=KbListResponse)
     async def list_kbs_endpoint(

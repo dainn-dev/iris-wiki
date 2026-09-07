@@ -60,6 +60,41 @@
   },
   "connector": {
     "tooltip": "Đồng bộ đám mây đang phát triển · bình chọn trên GitHub",
-    "vote": "Muốn dùng? Bình chọn"
+    "vote": "Muốn dùng? Bình chọn",
+    "gdrive": {
+      "title": "Google Drive",
+      "disconnected": "Chưa kết nối",
+      "pickKb": "Chọn một knowledge base để kết nối Google Drive.",
+      "pickFolder": "Đã kết nối · chọn thư mục để đồng bộ",
+      "syncingFolder": "Đang đồng bộ “{{name}}”",
+      "connectGoogle": "Kết nối với Google",
+      "connectSa": "Dùng service account",
+      "oauthMissing": "Đặt GOOGLE_OAUTH_CLIENT_ID và GOOGLE_OAUTH_CLIENT_SECRET trên máy chủ",
+      "chooseFolder": "Chọn thư mục",
+      "syncNow": "Đồng bộ ngay",
+      "pause": "Tạm dừng",
+      "resume": "Tiếp tục đồng bộ",
+      "disconnect": "Ngắt kết nối",
+      "polling": "đang poll",
+      "paused": "tạm dừng",
+      "lastSync": "Lần đồng bộ cuối {{time}}",
+      "fileCount_one": "{{count}} tệp đang theo dõi",
+      "fileCount_other": "{{count}} tệp đang theo dõi",
+      "connectedToast": "Đã kết nối Google Drive",
+      "errorToast": "Kết nối Google Drive thất bại",
+      "folderSetToast": "Đã chọn thư mục · đang đồng bộ",
+      "pausedToast": "Đã tạm dừng đồng bộ Drive",
+      "resumedToast": "Đã tiếp tục đồng bộ Drive",
+      "disconnectedToast": "Đã ngắt Google Drive",
+      "syncToast": "Đồng bộ Drive: thêm {{added}}, bỏ qua {{skipped}}, lỗi {{failed}}, xóa {{removed}}",
+      "saTitle": "Service account",
+      "saDesc": "Dán khóa JSON service-account của Google. Chia sẻ thư mục Drive với email tài khoản (client_email).",
+      "folderIdOptional": "ID thư mục (tùy chọn)",
+      "pickerDesc": "Mở một thư mục để xem thư mục con, hoặc dán ID từ URL Drive.",
+      "noFolders": "Không có thư mục ở đây. Dán ID nếu tài khoản này chỉ có thư mục được chia sẻ.",
+      "useFolder": "Dùng",
+      "useThisFolder": "Dùng thư mục này",
+      "usePastedId": "Dùng ID đã dán"
+    }
   }
 }

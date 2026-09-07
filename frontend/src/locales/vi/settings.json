@@ -30,7 +30,8 @@
     "kbRootEnvPinned": "Bị khóa bởi biến môi trường OPENKB_KB_ROOT; chỉnh sửa ở đây sẽ không có hiệu lực cho đến khi bỏ biến đó."
   },
   "conn": {
-    "note": "Bộ kết nối nguồn dữ liệu đám mây (OAuth / S3) đang phát triển và chưa khả dụng; hiện tại hãy tải file cục bộ từ trang chi tiết KB. Muốn có bộ kết nối? Bấm vào thẻ bên dưới để bình chọn trên GitHub và giúp chúng tôi ưu tiên."
+    "note": "Google Drive có thể đồng bộ một thư mục vào knowledge base (OAuth hoặc khóa service-account). S3 và OneDrive chưa khả dụng — bình chọn trên GitHub để giúp ưu tiên.",
+    "kbLabel": "Knowledge base"
   },
   "about": {
     "links": {

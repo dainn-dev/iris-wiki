@@ -36,6 +36,7 @@ humans steer, agents execute. Optimize changes for agent legibility.
 - `agent/tools.py` — shared wiki read/write tool functions used by query/linter (and by chat indirectly via `query.build_chat_agent`).
 - `agent/skills.py`, `agent/skill_runner.py`, `skill/` — Skill Factory.
 - `deck/`, `templates/`, `prompts/` — deck output, templates, prompt assets.
+- `connectors/` — Google Drive folder sync (OAuth + service account).
 
 ## Hard invariants
 - Deps are pinned **exactly** (supply-chain caution). Vet before bumping.

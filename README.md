@@ -129,6 +129,8 @@ openkb-web                       # serves the API + Workbench at http://127.0.0.
 
 Open `http://127.0.0.1:7566/` for the Workbench. Auth is off by default (local-first); set `OPENKB_API_TOKEN` to require a bearer token before exposing the server. See the [full Web UI guide](examples/rest-api/README.md#knowledge-workbench-web-ui).
 
+Google Drive folder sync (optional): set `GOOGLE_OAUTH_CLIENT_ID` / `GOOGLE_OAUTH_CLIENT_SECRET` (OAuth web client; redirect URI `http://localhost:7566/api/v1/connectors/gdrive/oauth/callback`) or paste a service-account JSON key after sharing a Drive folder with the account email. Connect a folder from **Documents** or **Settings → Data sources**; OpenKB polls for new/changed files and ingests them through the same compile pipeline as local uploads.
+
 > Working on the UI itself? Run the Vite dev server with `cd frontend && npm install && npm run dev` (it proxies `/api` to a running `openkb-web`), or `npm run build` to regenerate the bundled `openkb/web/`.
 
 # 🧩 How OpenKB Works

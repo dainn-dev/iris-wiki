@@ -11,6 +11,7 @@ import { ApiError } from '@/api/client'
 import MarkdownView from '@/components/MarkdownView'
 import PageList from '@/components/PageList'
 import ConnectorCards from '@/components/ConnectorCards'
+import GdriveConnectorPanel from '@/components/GdriveConnectorPanel'
 import KbOverviewCards, { type Section } from '@/components/KbOverviewCards'
 import KbSettingsSheet from '@/components/KbSettingsSheet'
 import { useAnimatedSwitch } from '@/hooks/useAnimatedSwitch'
@@ -114,6 +115,10 @@ export default function KbDetail() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
   const { t } = useTranslation(['kb', 'common'])
+
+  useEffect(() => {
+    if (id) sessionStorage.setItem("openkb_last_kb", id)
+  }, [id])
 
   const [inv, setInv] = useState<KbInventory | null>(null)
   const [invError, setInvError] = useState<string | null>(null)
@@ -1313,12 +1318,13 @@ function DocumentsPane({
           ))}
         </div>
 
-        {/* Remote connectors: no backend. Reframed as GitHub feature-request voting; never fake a connected state. */}
+        {/* Remote connectors: Google Drive is live; remaining cards are demand votes. */}
         <h2 className="mt-8 text-[13.5px] font-semibold text-foreground">{t('kb:remote.heading')}</h2>
         <p className="mt-1 text-[12px] text-muted-foreground">
           {t('kb:remote.note')}
         </p>
-        <div className="mt-3">
+        <div className="mt-3 space-y-2.5">
+          <GdriveConnectorPanel kb={kb} onSynced={onRefresh} />
           <ConnectorCards />
         </div>
       </div>

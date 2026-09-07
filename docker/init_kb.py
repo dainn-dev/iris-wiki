@@ -18,6 +18,7 @@ Environment variables:
   OPENKB_LANGUAGE (default en)
 """
 
+import json
 import os
 import sys
 from pathlib import Path
@@ -43,8 +44,19 @@ except FileExistsError:
 
 # Workaround for the open-claude.dainn.online gateway: it 403s requests whose
 # User-Agent is the official OpenAI SDK UA. Override it on every LLM call.
+# OPENKB_EXTRA_HEADERS (JSON) overrides the baked-in default so a different
+# gateway can be configured without editing this script.
 cfg = load_config(kb / ".openkb" / "config.yaml")
-cfg["extra_headers"] = {"User-Agent": "python-urllib/3.12"}
+_headers_env = os.environ.get("OPENKB_EXTRA_HEADERS", "")
+if _headers_env:
+    try:
+        _parsed = json.loads(_headers_env)
+        if isinstance(_parsed, dict) and _parsed:
+            cfg["extra_headers"] = _parsed
+    except ValueError:
+        pass
+else:
+    cfg["extra_headers"] = {"User-Agent": "python-urllib/3.12"}
 save_config(kb / ".openkb" / "config.yaml", cfg)
 
 # Persist LLM credentials locally so later `openkb add/query/chat` runs work.

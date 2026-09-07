@@ -23,6 +23,8 @@ from typing import Any, Literal
 
 import os
 
+import yaml
+
 from agents import set_tracing_disabled
 
 set_tracing_disabled(True)
@@ -3566,7 +3568,10 @@ def initialize_kb(
     # Seed config.yaml: an explicit model wins; otherwise inherit the
     # operator's project-root config.yaml (model/language/optional blocks)
     # so a KB created via the REST UI matches the deployed setup instead of
-    # the hardcoded DEFAULT_CONFIG (gpt-5.4 / en). Defaults are the last resort.
+    # the hardcoded DEFAULT_CONFIG (gpt-5.4 / en). A container/deployment can
+    # also pin the model with the OPENKB_MODEL env var (mirroring
+    # docker/init_kb.py) — that applies to UI-created KBs too, since this
+    # function backs the REST /init endpoint. Defaults are the last resort.
     template_config = Path.cwd() / "config.yaml"
     if model is not None:
         config = {
@@ -3579,11 +3584,32 @@ def initialize_kb(
         shutil.copy2(template_config, openkb_dir / "config.yaml")
     else:
         config = {
-            "model": DEFAULT_CONFIG["model"],
+            "model": os.environ.get("OPENKB_MODEL") or DEFAULT_CONFIG["model"],
             "language": DEFAULT_CONFIG["language"],
             "pageindex_threshold": DEFAULT_CONFIG["pageindex_threshold"],
         }
         save_config(openkb_dir / "config.yaml", config)
+
+    # Deployments that need a gateway workaround (e.g. a gateway that blocks
+    # the official OpenAI SDK User-Agent) can ship request headers via the
+    # OPENKB_EXTRA_HEADERS env var (JSON object), the same knob init_kb.py
+    # bakes into every container KB. Applied here so UI-created KBs get it
+    # too; an explicit model/config block above is preserved.
+    env_headers = os.environ.get("OPENKB_EXTRA_HEADERS")
+    if env_headers:
+        try:
+            headers = json.loads(env_headers)
+            if isinstance(headers, dict) and headers:
+                config_path = openkb_dir / "config.yaml"
+                # Raw read (not load_config) so defaults are NOT materialized
+                # into the file — a KB should stay lean and inherit global
+                # defaults that change later.
+                with config_path.open("r", encoding="utf-8") as fh:
+                    config = yaml.safe_load(fh) or {}
+                config["extra_headers"] = headers
+                save_config(config_path, config)
+        except (ValueError, TypeError):
+            logger.warning("OPENKB_EXTRA_HEADERS is not valid JSON; ignoring: %r", env_headers)
     atomic_write_json(openkb_dir / "hashes.json", {})
 
     # Seed KB-local .env: inherit LLM credentials from the project-root .env so
@@ -3811,3 +3837,8 @@ async def run_lint_report(
         "lint_files_changed": lint_files_changed,
         "lint_ghosts_removed": lint_ghosts_removed,
     }
+
+
+from openkb.connectors.cli import register_connector_commands
+
+register_connector_commands(cli)

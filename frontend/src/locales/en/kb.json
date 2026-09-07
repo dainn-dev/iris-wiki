@@ -84,7 +84,7 @@
   },
   "remote": {
     "heading": "Remote data sources",
-    "note": "Cloud connectors are in development and not yet available · want one? Click a card to vote on GitHub"
+    "note": "Connect Google Drive to sync a folder into this knowledge base. Other cloud sources are still in development — vote on GitHub to help prioritize."
   },
   "overview": {
     "index": { "label": "Index", "caption": "wiki root" },

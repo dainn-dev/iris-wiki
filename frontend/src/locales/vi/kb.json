@@ -84,7 +84,7 @@
   },
   "remote": {
     "heading": "Nguồn dữ liệu từ xa",
-    "note": "Bộ kết nối đám mây đang phát triển và chưa khả dụng · muốn dùng? Bấm vào thẻ để bình chọn trên GitHub"
+    "note": "Kết nối Google Drive để đồng bộ một thư mục vào knowledge base này. Các nguồn đám mây khác vẫn đang phát triển — bình chọn trên GitHub để giúp ưu tiên."
   },
   "overview": {
     "index": { "label": "Chỉ mục", "caption": "wiki gốc" },

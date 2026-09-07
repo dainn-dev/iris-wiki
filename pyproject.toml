@@ -77,8 +77,16 @@ dev = [
 ]
 # The Knowledge Workbench Web UI is served by this FastAPI server. `web` is the
 # canonical extra; `api` is a backwards-compatible alias so an existing
-# `pip install "openkb[api]"` keeps working.
-web = ["fastapi", "uvicorn", "python-multipart"]
+# `pip install "openkb[api]"` keeps working. `gdrive` is the Google Drive
+# folder connector (OAuth + service account); `web` includes it so the
+# Workbench image can sync Drive folders.
+gdrive = [
+    "google-api-python-client==2.200.0",
+    "google-auth==2.57.0",
+    "google-auth-httplib2==0.4.0",
+    "google-auth-oauthlib==1.4.1",
+]
+web = ["fastapi", "uvicorn", "python-multipart", "openkb[gdrive]"]
 api = ["openkb[web]"]
 
 [tool.hatch.version]

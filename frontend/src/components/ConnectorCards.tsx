@@ -2,13 +2,9 @@ import { Cloud, HardDrive, ThumbsUp, type LucideIcon } from "lucide-react"
 import { useTranslation } from "react-i18next"
 
 /**
- * Remote document-source connectors are NOT implemented (no OAuth/S3/sync
- * backend). Rather than dead "coming soon" tiles, each card links to a GitHub
- * issue search where users 👍 to signal demand — a telemetry-free, OSS-native
- * way to prioritize. The copy MUST never imply a connector is connected.
- *
- * `voteUrl` is an interim per-connector label search on the canonical repo; swap
- * to a specific `.../issues/<N>` once a tracking issue exists (one-line change).
+ * Placeholders for connectors that are not implemented yet. Google Drive has
+ * a real backend — see GdriveConnectorPanel. Copy MUST never imply a
+ * remaining vote-card is connected.
  */
 export interface Connector {
   id: string
@@ -22,7 +18,6 @@ const voteSearch = (label: string) =>
   `${REPO}/issues?q=${encodeURIComponent(`is:issue label:connector:${label}`)}`
 
 export const CONNECTORS: Connector[] = [
-  { id: "gdrive", label: "Google Drive", icon: Cloud, voteUrl: voteSearch("gdrive") },
   { id: "s3", label: "Amazon S3", icon: HardDrive, voteUrl: voteSearch("s3") },
   { id: "onedrive", label: "OneDrive", icon: Cloud, voteUrl: voteSearch("onedrive") },
 ]
@@ -31,7 +26,7 @@ export const CONNECTORS: Connector[] = [
 export default function ConnectorCards() {
   const { t } = useTranslation("common")
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
       {CONNECTORS.map((c) => (
         <a
           key={c.id}

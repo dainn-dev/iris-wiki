@@ -3,7 +3,9 @@ import { useTranslation } from 'react-i18next'
 import { Cpu, FolderCog, Cloud, Info, Loader2, Save, KeyRound, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { getGlobalConfig, patchGlobalConfig, type GlobalConfig, type GlobalConfigPatch } from '@/api/config'
+import { listKbs, type KbSummary } from '@/api/kb'
 import ConnectorCards from '@/components/ConnectorCards'
+import GdriveConnectorPanel from '@/components/GdriveConnectorPanel'
 import AboutTab from '@/components/AboutTab'
 import EntityTypesEditor from '@/components/EntityTypesEditor'
 import { Switch } from '@/components/ui/switch'
@@ -59,6 +61,8 @@ export default function Settings() {
   const [clearKey, setClearKey] = useState(false)
 
   const [saving, setSaving] = useState(false)
+  const [kbs, setKbs] = useState<KbSummary[]>([])
+  const [connKb, setConnKb] = useState("")
 
   /** Set the baseline and repopulate the form from a fresh global config. */
   const applyConfig = useCallback((c: GlobalConfig) => {
@@ -87,6 +91,28 @@ export default function Settings() {
       cancelled = true
     }
   }, [applyConfig])
+
+  useEffect(() => {
+    let cancelled = false
+    listKbs()
+      .then((r) => {
+        if (cancelled) return
+        setKbs(r.knowledge_bases)
+        const last = sessionStorage.getItem("openkb_last_kb") || ""
+        const names = r.knowledge_bases.map((k) => k.name)
+        setConnKb((current) => {
+          if (current && names.includes(current)) return current
+          if (last && names.includes(last)) return last
+          return names[0] || ""
+        })
+      })
+      .catch(() => {
+        if (!cancelled) setKbs([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   /**
    * Diff the form against the baseline into a minimal merge-patch. The three
@@ -388,12 +414,27 @@ export default function Settings() {
           </div>
         )}
 
-        {/* ---------- 数据源连接（无后端；改为 GitHub 需求投票，绝不伪造已连接） ---------- */}
+        {/* ---------- Data sources: Google Drive is live; remaining cards vote. ---------- */}
         {tab === 'conn' && (
           <div className="mt-5 space-y-3">
             <p className="text-[13px] text-muted-foreground anim-fade-up">
               {t('settings:conn.note')}
             </p>
+            {kbs.length > 0 && (
+              <label className="block text-[12.5px] text-muted-foreground">
+                {t('settings:conn.kbLabel')}
+                <select
+                  className={`${inputCls} font-sans`}
+                  value={connKb}
+                  onChange={(e) => setConnKb(e.target.value)}
+                >
+                  {kbs.map((k) => (
+                    <option key={k.name} value={k.name}>{k.name}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <GdriveConnectorPanel kb={connKb} />
             <ConnectorCards />
           </div>
         )}
