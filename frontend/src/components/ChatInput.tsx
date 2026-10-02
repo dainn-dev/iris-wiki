@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation, Trans } from "react-i18next"
 import {
-  ArrowUp, BookOpen, ChevronDown, X,
+  ArrowUp, BookOpen, ChevronDown, Cpu, X,
   Presentation, Sparkles, Waypoints,
   type LucideIcon,
 } from "lucide-react"
@@ -9,6 +9,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { listKbs, type KbSummary } from "@/api/kb"
+import { fetchModels } from "@/lib/model-catalog"
 import { cn } from "@/lib/utils"
 
 export interface SlashCommand {
@@ -42,16 +43,20 @@ interface Props {
   kbId: string
   onKbChange?: (id: string) => void
   onSend: (text: string, command: SlashCommand | null) => void
+  /** Active model (session's, else the KB's effective default). */
+  model?: string
+  onModelChange?: (model: string) => void
   autoFocus?: boolean
   placeholder?: string
   disabled?: boolean
 }
 
 export default function ChatInput({
-  kbId, onKbChange, onSend, autoFocus, placeholder, disabled,
+  kbId, onKbChange, onSend, model, onModelChange, autoFocus, placeholder, disabled,
 }: Props) {
   const { t } = useTranslation("chat")
   const [kbs, setKbs] = useState<KbSummary[]>([])
+  const [models, setModels] = useState<string[]>([])
   const [value, setValue] = useState("")
   const [cmd, setCmd] = useState<SlashCommand | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -61,6 +66,23 @@ export default function ChatInput({
   useEffect(() => {
     listKbs().then((r) => setKbs(r.knowledge_bases)).catch(() => setKbs([]))
   }, [])
+
+  // Model catalog for the picker: the KB's own API base may differ, so refetch
+  // when the KB changes (fetchModels itself is session-cached + deduped).
+  useEffect(() => {
+    let cancelled = false
+    fetchModels(kbId || undefined)
+      .then((m) => { if (!cancelled) setModels(m) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [kbId])
+
+  // Keep the current selection selectable even when the catalog lacks it.
+  const modelOptions = useMemo(() => {
+    if (model && !models.includes(model)) return [model, ...models]
+    return models
+  }, [models, model])
+  const modelLabel = model ? (model.split("/").pop() ?? model) : t("input.selectModel")
 
   const query = !cmd && value.startsWith("/") ? value.slice(1) : null
   const filtered = useMemo(() => {
@@ -188,6 +210,33 @@ export default function ChatInput({
                   <span className={cn("w-2 h-2 rounded-full mr-1", dotFor(i))} />
                   {k.name}
                   {k.name === kbId && <span className="ml-auto text-accent-brand text-[11px]">{t("input.current")}</span>}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* 模型选择：从 {API_BASE}/models 拉取目录，按会话切换 */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                title={model || t("input.selectModel")}
+                className="flex items-center gap-1.5 h-7 px-2 rounded-apple-sm text-[12px] font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors max-w-44"
+              >
+                <Cpu className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">{modelLabel}</span>
+                <ChevronDown className="w-3 h-3 opacity-60 shrink-0" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-80 max-h-72 overflow-y-auto">
+              {modelOptions.length === 0 && (
+                <DropdownMenuItem disabled className="text-[13px] text-muted-foreground">
+                  {t("input.noModels")}
+                </DropdownMenuItem>
+              )}
+              {modelOptions.map((m) => (
+                <DropdownMenuItem key={m} onClick={() => onModelChange?.(m)} className="text-[12px] font-mono2">
+                  {m}
+                  {m === model && <span className="ml-auto text-accent-brand text-[11px]">{t("input.current")}</span>}
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>

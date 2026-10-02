@@ -254,6 +254,52 @@ def test_chat_stream_forwards_artifact_event(monkeypatch, kb_dir):
     assert artifact["data"] == {"kind": "file", "path": "output/x.html", "name": "x.html"}
 
 
+def test_chat_model_override_updates_session_and_load_returns_it(monkeypatch, kb_dir):
+    """A per-request ``model`` override from the composer picker must replace
+    the session's model for the turn AND persist on the session record so
+    ``/chat/sessions/load`` returns it on restore."""
+    client = _client(monkeypatch)
+    kb = _use_named_kb(monkeypatch, kb_dir)
+
+    from openkb.agent.chat_session import ChatSession
+
+    session = ChatSession.new(kb_dir, "gpt-old", "en")
+    session.save()
+
+    captured = {}
+
+    async def fake_chat_events(agent, loaded_session, message, **kwargs):
+        captured["model"] = loaded_session.model
+        yield {
+            "event": "final",
+            "data": {"answer": "ok", "session_id": loaded_session.id, "turn_count": 1},
+        }
+
+    monkeypatch.setattr("openkb.api_helpers.build_chat_session_agent", lambda *a, **k: object())
+    monkeypatch.setattr("openkb.api_helpers.iter_chat_turn_events", fake_chat_events)
+
+    response = client.post(
+        "/api/v1/chat",
+        json={
+            "kb": kb,
+            "message": "hi",
+            "session_id": session.id,
+            "model": "openai/cx/gpt-5.6-terra",
+        },
+        headers=_auth(),
+    )
+    assert response.status_code == 200
+    assert captured["model"] == "openai/cx/gpt-5.6-terra"
+
+    loaded = client.post(
+        "/api/v1/chat/sessions/load",
+        json={"kb": kb, "session_id": session.id},
+        headers=_auth(),
+    )
+    assert loaded.status_code == 200
+    assert loaded.json()["model"] == "openai/cx/gpt-5.6-terra"
+
+
 def test_init_endpoint_creates_named_kb_under_env_root(monkeypatch, tmp_path):
     client = _client(monkeypatch)
     root = tmp_path / "api-kbs"
@@ -2039,14 +2085,20 @@ def test_wiki_image_endpoint_serves_png(monkeypatch, kb_dir):
     (img_dir / "p1.png").write_bytes(b"\x89PNG\r\n\x1a\nfakepng")
 
     # note-relative form (short-doc source pages embed this)
-    r1 = client.get("/api/v1/wiki/image", params={"kb": kb, "path": "images/doc/p1.png"}, headers=_auth())
+    r1 = client.get(
+        "/api/v1/wiki/image",
+        params={"kb": kb, "path": "images/doc/p1.png"},
+        headers=_auth(),
+    )
     assert r1.status_code == 200
     assert r1.headers["content-type"].startswith("image/png")
     assert r1.content == b"\x89PNG\r\n\x1a\nfakepng"
 
     # wiki-root-relative form (long-doc JSON metadata lists this)
     r2 = client.get(
-        "/api/v1/wiki/image", params={"kb": kb, "path": "sources/images/doc/p1.png"}, headers=_auth()
+        "/api/v1/wiki/image",
+        params={"kb": kb, "path": "sources/images/doc/p1.png"},
+        headers=_auth(),
     )
     assert r2.status_code == 200
     assert r2.content == b"\x89PNG\r\n\x1a\nfakepng"
@@ -2056,7 +2108,11 @@ def test_wiki_image_endpoint_404_on_missing(monkeypatch, kb_dir):
     client = _client(monkeypatch)
     kb = _use_named_kb(monkeypatch, kb_dir)
 
-    r = client.get("/api/v1/wiki/image", params={"kb": kb, "path": "images/doc/nope.png"}, headers=_auth())
+    r = client.get(
+        "/api/v1/wiki/image",
+        params={"kb": kb, "path": "images/doc/nope.png"},
+        headers=_auth(),
+    )
     assert r.status_code == 404
 
 
@@ -2723,7 +2779,15 @@ def test_config_models_lists_sorted_ids_and_sends_credentials(monkeypatch, tmp_p
         seen["url"] = request.full_url
         seen["headers"] = {k.lower(): v for k, v in request.headers.items()}
         return _FakeHttpResponse(
-            {"data": [{"id": "b-model"}, {"id": "openai/direct"}, {"id": "a-model"}, {"id": 42}, "bad"]}
+            {
+                "data": [
+                    {"id": "b-model"},
+                    {"id": "openai/direct"},
+                    {"id": "a-model"},
+                    {"id": 42},
+                    "bad",
+                ]
+            }
         )
 
     monkeypatch.setattr("openkb.api_config.urllib.request.urlopen", fake_urlopen)

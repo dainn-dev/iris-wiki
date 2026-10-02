@@ -24,6 +24,10 @@ class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1)
     session_id: str | None = None
     stream: bool = True
+    # Per-request model override from the chat composer's model picker. When
+    # set, it replaces the session's model for this turn and persists on the
+    # session (via its next save) so subsequent turns keep it.
+    model: str | None = None
 
 
 class ChatResponse(BaseModel):
@@ -63,6 +67,8 @@ class ChatSessionLoadResponse(BaseModel):
     session_id: str
     title: str
     turn_count: int
+    # The session's active model so the restored composer can preselect it.
+    model: str
     user_turns: list[str]
     assistant_texts: list[str]
     # Parallel to assistant_texts (1:1 by index); an empty inner list means

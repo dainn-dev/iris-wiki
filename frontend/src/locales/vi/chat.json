@@ -49,7 +49,9 @@
     "cmdPlaceholder": "{{label}}: mô tả ý định của bạn…",
     "defaultPlaceholder": "Hỏi knowledge base của bạn, hoặc gõ / để xem lệnh…",
     "selectKb": "Chọn knowledge base",
+    "selectModel": "Chọn model",
     "noKbs": "Chưa có knowledge base nào",
+    "noModels": "Không tải được danh sách model",
     "current": "Hiện tại",
     "stop": "Dừng",
     "hint": "Gõ <0>/</0> để xem lệnh"

@@ -351,6 +351,7 @@ export async function* streamChat(
   sessionId: string | null,
   message: string,
   signal?: AbortSignal,
+  model?: string,
 ): AsyncGenerator<SseEvent> {
   yield* apiStream(
     "/api/v1/chat",
@@ -359,6 +360,9 @@ export async function* streamChat(
       session_id: sessionId,
       message,
       stream: true,
+      // Optional per-request model override from the composer picker; omitted
+      // when unset so the backend keeps the session's own model.
+      ...(model ? { model } : {}),
     },
     signal,
   )
@@ -399,6 +403,9 @@ export interface ChatSessionLoad {
   session_id: string
   title: string
   turn_count: number
+  /** The session's active model — preselects the composer picker on restore.
+   *  Absent from a backend too old to send it. */
+  model?: string
   user_turns: string[]
   assistant_texts: string[]
   /** Parallel to assistant_texts by index; an empty inner array means "no trace

@@ -325,6 +325,12 @@ def create_app() -> FastAPI:
         kb_dir = _resolve_kb(request.kb)
         bundle = resolve_credential_bundle(kb_dir)
         session = _load_or_create_session(kb_dir, request.session_id)
+        # A per-request model override switches this session's model before the
+        # run_config/agent are built; save() persists the choice immediately so
+        # it survives a failed turn and is returned by /chat/sessions/load.
+        if request.model and request.model.strip() and request.model.strip() != session.model:
+            session.model = request.model.strip()
+            session.save()
         run_config = build_run_config_from_bundle(session.model, bundle)
 
         if request.stream:
@@ -390,6 +396,7 @@ def create_app() -> FastAPI:
             session_id=session.id,
             title=session.title,
             turn_count=session.turn_count,
+            model=session.model,
             user_turns=session.user_turns,
             assistant_texts=session.assistant_texts,
             assistant_traces=session.assistant_traces,

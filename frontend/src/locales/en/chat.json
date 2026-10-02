@@ -49,7 +49,9 @@
     "cmdPlaceholder": "{{label}}: describe your intent…",
     "defaultPlaceholder": "Ask your knowledge base, or type / for commands…",
     "selectKb": "Select a knowledge base",
+    "selectModel": "Select a model",
     "noKbs": "No knowledge bases yet",
+    "noModels": "No models found",
     "current": "Current",
     "stop": "Stop",
     "hint": "Type <0>/</0> for commands"

@@ -1,32 +1,11 @@
 import { useEffect, useState } from "react"
-import { getModelList } from "@/api/config"
+import { fetchModels } from "@/lib/model-catalog"
 
 /** Shared id linking a text `<input list=…>` to the fetched model suggestions. */
 export const MODEL_LIST_ID = "llm-models"
 
-// Module-level cache + in-flight dedupe: model lists are keyed by KB (a KB may
-// point at a different API base) and never refetched within a session — model
-// catalogs change rarely, and Settings/sheets are reopened often.
-const cache = new Map<string, string[]>()
-const inflight = new Map<string, Promise<string[]>>()
-
-function fetchModels(kb: string | undefined): Promise<string[]> {
-  const key = kb ?? ""
-  const cached = cache.get(key)
-  if (cached) return Promise.resolve(cached)
-  let pending = inflight.get(key)
-  if (!pending) {
-    pending = getModelList(kb)
-      .then((r) => r.models)
-      .catch(() => [] as string[])
-    inflight.set(key, pending)
-    void pending.finally(() => inflight.delete(key))
-  }
-  return pending.then((ids) => {
-    cache.set(key, ids)
-    return ids
-  })
-}
+// The catalog itself is fetched via @/lib/model-catalog (session-cached +
+// in-flight deduped, shared with the chat composer's model picker).
 
 /**
  * A native `<datalist>` of model ids fetched from `{OPENAI_API_BASE}/models`,
@@ -37,7 +16,7 @@ function fetchModels(kb: string | undefined): Promise<string[]> {
  * error the input simply behaves as plain text.
  */
 export function ModelListDatalist({ kb }: { kb?: string }) {
-  const [models, setModels] = useState<string[]>(cache.get(kb ?? "") ?? [])
+  const [models, setModels] = useState<string[]>([])
   useEffect(() => {
     let cancelled = false
     void fetchModels(kb).then((ids) => {

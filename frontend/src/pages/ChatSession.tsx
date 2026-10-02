@@ -13,7 +13,7 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet"
 import { getGraph, getPage } from "@/api/wiki"
-import { listKbs } from "@/api/kb"
+import { listKbs, getKbConfig } from "@/api/kb"
 import { runDeckCommand, runSkillCommand } from "@/api/artifacts"
 import type { SseEvent } from "@/api/client"
 import {
@@ -275,6 +275,15 @@ export default function ChatSession() {
 
   const sessionIdRef = useRef<string | null>(id && id !== "new" ? id : null)
 
+  // Composer model picker: the session's model once known, else the KB's
+  // effective default (fetched below). Sent as a per-request override so
+  // switching it mid-session applies from the next turn and persists on the
+  // session server-side.
+  const [model, setModelState] = useState("")
+  const modelRef = useRef("")
+  const setModel = (v: string) => { modelRef.current = v; setModelState(v) }
+  const [defaultModel, setDefaultModel] = useState("")
+
   const [msgs, setMsgs] = useState<Msg[]>([])
   const [running, setRunning] = useState(false)
   // Whether the running turn is abortable — i.e. a live AbortController exists.
@@ -328,6 +337,17 @@ export default function ChatSession() {
   // Pending deferred unmount-abort timer — see the abort-on-unmount effect. Held
   // so a React 18 StrictMode dev remount can cancel it before it fires.
   const pendingUnmountAbort = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Effective default model for the composer picker on a NEW session (no
+  // session model yet); a restored session's own `model` wins via
+  // `model || defaultModel`.
+  useEffect(() => {
+    let cancelled = false
+    const pending = kb ? getKbConfig(kb) : Promise.resolve(null)
+    void pending.then((c) => { if (!cancelled) setDefaultModel(c?.model ?? "") })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [kb])
 
   /**
    * Run a generator command (`/deck`, `/skill`, `/visualize`) against the real
@@ -423,7 +443,10 @@ export default function ChatSession() {
     setStoppable(true)
 
     try {
-      const stream = streamChat(activeKb, sessionIdRef.current, question, controller.signal)
+      const stream = streamChat(
+      activeKb, sessionIdRef.current, question, controller.signal,
+      modelRef.current || undefined,
+    )
       for await (const event of stream) {
         patch((t) => foldSseEvent(t, event, activeKb))
         if (event.event === "final" && typeof event.data?.session_id === "string") {
@@ -511,6 +534,7 @@ export default function ChatSession() {
     setRunning(false)
     setStoppable(false)
     setKb(location.state?.kbId ?? "")
+    setModel("")
     sessionIdRef.current = id
     setMsgs([])
     setPanel(CLOSED_PANEL)
@@ -540,6 +564,7 @@ export default function ChatSession() {
       try {
         const loaded = await loadSession(resolvedKb, id)
         if (cancelled) return
+        if (loaded.model) setModel(loaded.model)
         const restored: Msg[] = []
         const n = Math.max(loaded.user_turns.length, loaded.assistant_texts.length)
         for (let i = 0; i < n; i++) {
@@ -762,6 +787,8 @@ export default function ChatSession() {
             kbId={kb}
             onKbChange={setKb}
             onSend={send}
+            model={model || defaultModel}
+            onModelChange={setModel}
             disabled={running}
             placeholder={t("chat:inputPlaceholder")}
           />
