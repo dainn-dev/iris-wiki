@@ -3584,10 +3584,15 @@ def initialize_kb(
         shutil.copy2(template_config, openkb_dir / "config.yaml")
     else:
         config = {
-            "model": os.environ.get("OPENKB_MODEL") or DEFAULT_CONFIG["model"],
             "language": DEFAULT_CONFIG["language"],
             "pageindex_threshold": DEFAULT_CONFIG["pageindex_threshold"],
         }
+        # No model key when nothing supplies one: the KB then inherits the
+        # global (Settings) model, so a later global change applies instead of
+        # this KB being stuck on a model pinned at creation time.
+        env_model = os.environ.get("OPENKB_MODEL")
+        if env_model:
+            config["model"] = env_model
         save_config(openkb_dir / "config.yaml", config)
 
     # Deployments that need a gateway workaround (e.g. a gateway that blocks

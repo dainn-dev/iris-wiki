@@ -12,7 +12,8 @@ mounted, empty /work (or re-run on an existing KB):
         openkb:latest openkb-init
 
 Environment variables:
-  OPENKB_MODEL  (default openai/opencode-go/deepseek-v4-flash)
+  OPENKB_MODEL  (optional; when unset the new KB pins NO model and inherits
+                 the global Settings model instead)
   LLM_API_KEY
   OPENAI_API_BASE
   OPENKB_LANGUAGE (default en)
@@ -31,7 +32,7 @@ kb = Path("/work")
 try:
     initialize_kb(
         kb,
-        model=os.environ.get("OPENKB_MODEL") or "openai/opencode-go/deepseek-v4-flash",
+        model=os.environ.get("OPENKB_MODEL") or None,
         api_key=os.environ.get("LLM_API_KEY"),
         openai_api_base=os.environ.get("OPENAI_API_BASE"),
     )
@@ -39,7 +40,7 @@ try:
 except FileExistsError:
     # Already initialized: load and patch the existing config instead.
     cfg = load_config(kb / ".openkb" / "config.yaml")
-    if "OPENKB_MODEL" in os.environ:
+    if os.environ.get("OPENKB_MODEL"):
         cfg.setdefault("model", os.environ["OPENKB_MODEL"])
 
 # Workaround for the open-claude.dainn.online gateway: it 403s requests whose
@@ -60,11 +61,13 @@ else:
 save_config(kb / ".openkb" / "config.yaml", cfg)
 
 # Persist LLM credentials locally so later `openkb add/query/chat` runs work.
+# Truthy-gated: an empty env var (compose default) must not write `KEY=` lines
+# that would shadow nothing yet still pollute the KB .env.
 env_path = kb / ".env"
 pairs = []
-if "LLM_API_KEY" in os.environ:
+if os.environ.get("LLM_API_KEY"):
     pairs.append(f"LLM_API_KEY={os.environ['LLM_API_KEY']}")
-if "OPENAI_API_BASE" in os.environ:
+if os.environ.get("OPENAI_API_BASE"):
     pairs.append(f"OPENAI_API_BASE={os.environ['OPENAI_API_BASE']}")
 if pairs:
     env_path.write_text("\n".join(pairs) + "\n", encoding="utf-8")

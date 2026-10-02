@@ -6,13 +6,13 @@ services:
     ports:
       - "7566:7566"
     environment:
-      # Your LLM gateway (any OpenAI-compatible / LiteLLM provider).
-      - LLM_API_KEY=${LLM_API_KEY:-sk-4551db1cb0094b3e-2cd0bd-f502824a}
-      - OPENAI_API_BASE=${OPENAI_API_BASE:-https://open-claude.dainn.online/v1}
-      # Model used for NEW KBs (the /init endpoint and openkb-init); the
-      # KB-level config.yaml wins per KB. `openai/` prefix is required so
-      # LiteLLM routes cx/* to the OpenAI-compatible base above.
-      - OPENKB_MODEL=${OPENKB_MODEL:-openai/cx/gpt-5.6-sol}
+      # LLM credentials + gateway + model come from the Settings UI, persisted
+      # in ~/.config/openkb/.env and global.yaml (mounted below). They are NOT
+      # passed as env vars: anything set here would interpolate from the local
+      # .env and outrank the Settings values at runtime, and would be baked
+      # into new KBs at init. An operator can still inject deliberate
+      # overrides via `docker run -e` / a custom compose override.
+      #   LLM_API_KEY / OPENAI_API_BASE / OPENKB_MODEL
       # The open-claude.dainn.online gateway blocks the official OpenAI SDK
       # User-Agent; override it on every LLM request for new KBs.
       - OPENKB_EXTRA_HEADERS=${OPENKB_EXTRA_HEADERS:-{"User-Agent":"python-urllib/3.12"}}
