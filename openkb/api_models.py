@@ -552,6 +552,7 @@ class GdriveSyncResult(BaseModel):
     skipped: int = 0
     failed: int = 0
     removed: int = 0
+    cancelled: int = 0
 
 
 class GdriveDisconnectResponse(BaseModel):
@@ -559,5 +560,32 @@ class GdriveDisconnectResponse(BaseModel):
     disconnected: bool = True
 
 
+class GdriveActiveSyncItem(BaseModel):
+    """Server-side snapshot of a manual Drive sync, for UI popup restore."""
+
+    kb: str
+    phase: str  # running | done | cancelled | error
+    started_at: float
+    files: list[dict[str, Any]] = Field(default_factory=list)
+    result: dict[str, Any] | None = None
+    error: str | None = None
+
+
+class GdriveActiveSyncsResponse(BaseModel):
+    syncs: list[GdriveActiveSyncItem] = Field(default_factory=list)
+
+
+class GdriveSyncCancelResponse(BaseModel):
+    kb: str
+    cancelling: bool = True
+
+
 class GdriveKbRequest(BaseModel):
     kb: str = Field(..., min_length=1)
+
+
+class ModelListResponse(BaseModel):
+    """Model ids advertised by the configured ``OPENAI_API_BASE``/models."""
+
+    configured: bool
+    models: list[str] = Field(default_factory=list)

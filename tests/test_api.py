@@ -2693,6 +2693,120 @@ def test_global_config_requires_auth(monkeypatch, tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# GET /api/v1/config/models  (model auto-suggest from {OPENAI_API_BASE}/models)
+# ---------------------------------------------------------------------------
+
+
+class _FakeHttpResponse:
+    """Minimal context-manager stand-in for urllib.request.urlopen's response."""
+
+    def __init__(self, payload):
+        self._body = json.dumps(payload).encode()
+
+    def read(self):
+        return self._body
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+
+def test_config_models_lists_sorted_ids_and_sends_credentials(monkeypatch, tmp_path):
+    monkeypatch.setattr("openkb.config.GLOBAL_CONFIG_DIR", tmp_path)
+    monkeypatch.setenv("OPENAI_API_BASE", "https://gw.example/v1/")
+    monkeypatch.setenv("LLM_API_KEY", "sk-live")
+    seen = {}
+
+    def fake_urlopen(request, timeout):
+        seen["url"] = request.full_url
+        seen["headers"] = {k.lower(): v for k, v in request.headers.items()}
+        return _FakeHttpResponse(
+            {"data": [{"id": "b-model"}, {"id": "openai/direct"}, {"id": "a-model"}, {"id": 42}, "bad"]}
+        )
+
+    monkeypatch.setattr("openkb.api_config.urllib.request.urlopen", fake_urlopen)
+    client = _client(monkeypatch)
+    body = client.get("/api/v1/config/models", headers=_auth()).json()
+    assert body == {
+        "configured": True,
+        "models": ["openai/a-model", "openai/b-model", "openai/direct"],
+    }
+    assert seen["url"] == "https://gw.example/v1/models"
+    assert seen["headers"]["authorization"] == "Bearer sk-live"
+    assert seen["headers"]["user-agent"] == "python-urllib/3.12"
+    assert "sk-live" not in json.dumps(body)
+
+
+def test_config_models_unconfigured_when_no_base(monkeypatch, tmp_path):
+    monkeypatch.setattr("openkb.config.GLOBAL_CONFIG_DIR", tmp_path)
+    # Empty strings, not delenv: create_app() runs load_dotenv() which would
+    # re-import a developer's real .env values; empty counts as unset in
+    # resolve_credential_bundle and load_dotenv never overrides existing vars.
+    monkeypatch.setenv("OPENAI_API_BASE", "")
+    monkeypatch.setenv("LLM_API_KEY", "")
+
+    def boom(*args, **kwargs):
+        raise AssertionError("urlopen must not be called without a base URL")
+
+    monkeypatch.setattr("openkb.api_config.urllib.request.urlopen", boom)
+    body = _client(monkeypatch).get("/api/v1/config/models", headers=_auth()).json()
+    assert body == {"configured": False, "models": []}
+
+
+def test_config_models_upstream_error_is_sanitized_502(monkeypatch, tmp_path):
+    import io
+    import urllib.error
+
+    monkeypatch.setenv("OPENAI_API_BASE", "https://gw.example/v1")
+    monkeypatch.setenv("LLM_API_KEY", "sk-live")
+
+    def fail(request, timeout):
+        raise urllib.error.HTTPError(
+            request.full_url, 403, "Forbidden", None, io.BytesIO(b"sk-live details")
+        )
+
+    monkeypatch.setattr("openkb.api_config.urllib.request.urlopen", fail)
+    response = _client(monkeypatch).get("/api/v1/config/models", headers=_auth())
+    assert response.status_code == 502
+    assert "sk-live" not in response.text
+
+
+def test_config_models_prefers_kb_credentials_and_headers(monkeypatch, tmp_path):
+    kb_dir = tmp_path / "kb"
+    (kb_dir / ".openkb").mkdir(parents=True)
+    (kb_dir / ".env").write_text(
+        "OPENAI_API_BASE=https://kb-gw.example/v1\nLLM_API_KEY=kb-key\n", encoding="utf-8"
+    )
+    (kb_dir / ".openkb" / "config.yaml").write_text(
+        yaml.safe_dump({"extra_headers": {"User-Agent": "kb-ua"}}), encoding="utf-8"
+    )
+    monkeypatch.setenv("OPENAI_API_BASE", "https://global-gw.example/v1")
+    monkeypatch.setenv("LLM_API_KEY", "global-key")
+    monkeypatch.setattr("openkb.config.resolve_kb_alias", lambda name: kb_dir)
+    seen = {}
+
+    def fake_urlopen(request, timeout):
+        seen["url"] = request.full_url
+        seen["headers"] = {k.lower(): v for k, v in request.headers.items()}
+        return _FakeHttpResponse({"data": [{"id": "m1"}]})
+
+    monkeypatch.setattr("openkb.api_config.urllib.request.urlopen", fake_urlopen)
+    body = _client(monkeypatch).get("/api/v1/config/models?kb=whatever", headers=_auth()).json()
+    assert body["models"] == ["openai/m1"]
+    assert seen["url"] == "https://kb-gw.example/v1/models"
+    assert seen["headers"]["authorization"] == "Bearer kb-key"
+    assert seen["headers"]["user-agent"] == "kb-ua"
+
+
+def test_config_models_requires_auth(monkeypatch, tmp_path):
+    monkeypatch.setattr("openkb.config.GLOBAL_CONFIG_DIR", tmp_path)
+    client = _client(monkeypatch)
+    assert client.get("/api/v1/config/models").status_code == 401
+
+
+# ---------------------------------------------------------------------------
 # GET/PATCH /api/v1/config  — global-default credentials (global .env)
 # ---------------------------------------------------------------------------
 

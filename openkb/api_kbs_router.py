@@ -8,7 +8,7 @@ unregister, so this endpoint needs no create_app closure and extracts cleanly.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from starlette.concurrency import run_in_threadpool
 
 from openkb.api_helpers import _is_kb_dir, require_bearer_token
@@ -22,6 +22,7 @@ kbs_router = APIRouter()
 @kbs_router.post("/api/v1/kb/delete", response_model=KbDeleteResponse)
 async def delete_kb_endpoint(
     request: KbDeleteRequest,
+    raw_request: Request,
     _: None = Depends(require_bearer_token),
 ) -> KbDeleteResponse:
     # Type-the-name confirmation, re-checked server-side: this physically
@@ -38,6 +39,13 @@ async def delete_kb_endpoint(
     registered = any(p == kb_dir for _, p in registered_kbs())
     if not _is_kb_dir(kb_dir) and not registered:
         raise HTTPException(status_code=404, detail=f"No knowledge base named {request.kb!r}.")
+    # Stop the Drive poller (and cancel an in-flight manual sync) BEFORE
+    # rmtree — otherwise the worker thread can write state back into kb_dir
+    # and recreate .openkb after the delete, breaking a later re-init with
+    # "already initialized".
+    registry = getattr(raw_request.app.state, "gdrive_registry", None)
+    if registry is not None:
+        await run_in_threadpool(registry.stop, request.kb, persist_enabled=False)
     try:
         await run_in_threadpool(delete_kb, kb_dir)
     except ValueError as exc:  # resolved to an existing path that is not a KB

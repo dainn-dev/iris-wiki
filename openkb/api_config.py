@@ -8,8 +8,11 @@ endpoint) MUST hold the per-KB mutation lock.
 
 from __future__ import annotations
 
+import json
 import logging
 import os
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 import yaml
@@ -24,6 +27,7 @@ from openkb.api_models import (
     GlobalConfigValues,
     KbConfigPatchRequest,
     KbConfigResponse,
+    ModelListResponse,
     _KbConfigWritable,
 )
 from openkb.config import (
@@ -386,6 +390,70 @@ def apply_global_config_patch(request: GlobalConfigPatchRequest) -> None:
             _atomic_yaml_dump(_config_module.GLOBAL_CONFIG_PATH, gc)
         if write_env:
             _write_global_env(request, fields_set)
+
+
+def list_available_models(kb: str | None) -> ModelListResponse:
+    """Fetch model ids from ``{OPENAI_API_BASE}/models`` for auto-suggest.
+
+    Credential resolution mirrors every other LLM call: with ``kb`` the KB's
+    own ``.env``/``config.yaml`` wins (per-KB base URL + extra_headers like the
+    gateway-required ``User-Agent``); without it, the process env then the
+    global ``~/.config/openkb/.env`` are used — ``GLOBAL_CONFIG_DIR`` doubles as
+    the "kb_dir" so the same resolver reads the global ``.env`` directly.
+
+    The endpoint is advisory: a missing base URL yields ``configured: false``
+    (the UI falls back to a plain free-text field) rather than an error.
+    Upstream failures are 502 with a sanitized message — the API key is never
+    logged or returned, and the base URL stays out of the error text.
+    """
+    if kb is not None:
+        try:
+            from openkb.config import resolve_kb_alias
+
+            kb_dir = resolve_kb_alias(kb)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+    else:
+        kb_dir = _config_module.GLOBAL_CONFIG_DIR
+    bundle = resolve_credential_bundle(kb_dir)
+    if not bundle.base_url:
+        return ModelListResponse(configured=False, models=[])
+
+    url = bundle.base_url.rstrip("/") + "/models"
+    # Default UA first so a KB/gateway-required override in extra_headers wins.
+    headers = {"User-Agent": "python-urllib/3.12", **bundle.extra_headers}
+    if bundle.api_key:
+        headers["Authorization"] = f"Bearer {bundle.api_key}"
+    request = urllib.request.Request(url, headers=headers)
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            payload = json.loads(response.read())
+    except urllib.error.HTTPError as exc:
+        logger.info("model list request failed: HTTP %s", exc.code)
+        raise HTTPException(
+            status_code=502,
+            detail=f"Model list request failed (HTTP {exc.code}).",
+        ) from exc
+    except (urllib.error.URLError, TimeoutError, OSError, ValueError) as exc:
+        logger.info("model list request failed: %s", type(exc).__name__)
+        raise HTTPException(
+            status_code=502,
+            detail="Could not reach the configured API base to list models.",
+        ) from exc
+
+    data = payload.get("data") if isinstance(payload, dict) else None
+    ids = (
+        sorted({m["id"] for m in data if isinstance(m, dict) and isinstance(m.get("id"), str)})
+        if isinstance(data, list)
+        else []
+    )
+    # OPENAI_API_BASE is always an OpenAI-compatible endpoint, so LiteLLM needs
+    # the ``openai/`` provider prefix (e.g. the gateway returns ``cx/...`` ids
+    # and the working config is ``openai/cx/gpt-5.6-terra``). The gateway's own
+    # routing namespaces (``openrouter/...``) are part of the id, not LiteLLM
+    # providers, so prefix unconditionally unless already prefixed.
+    ids = [mid if mid.startswith("openai/") else f"openai/{mid}" for mid in ids]
+    return ModelListResponse(configured=True, models=ids)
 
 
 def _write_global_env(request: GlobalConfigPatchRequest, fields_set: set[str]) -> None:

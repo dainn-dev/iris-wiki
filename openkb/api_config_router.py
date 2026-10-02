@@ -8,12 +8,20 @@ so these endpoints need no create_app closure and extract cleanly.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from fastapi.concurrency import run_in_threadpool
 
-from openkb.api_config import apply_global_config_patch, read_global_config
+from openkb.api_config import (
+    apply_global_config_patch,
+    list_available_models,
+    read_global_config,
+)
 from openkb.api_helpers import require_bearer_token
-from openkb.api_models import GlobalConfigPatchRequest, GlobalConfigResponse
+from openkb.api_models import (
+    GlobalConfigPatchRequest,
+    GlobalConfigResponse,
+    ModelListResponse,
+)
 
 config_router = APIRouter()
 
@@ -36,3 +44,12 @@ async def global_config_patch(
     # read path below holds no lock, so it stays on the event loop.
     await run_in_threadpool(apply_global_config_patch, request)
     return read_global_config()
+
+
+@config_router.get("/api/v1/config/models", response_model=ModelListResponse)
+async def config_models_list(
+    kb: str | None = Query(default=None),
+    _: None = Depends(require_bearer_token),
+) -> ModelListResponse:
+    """Model ids from ``{OPENAI_API_BASE}/models`` for UI auto-suggest."""
+    return await run_in_threadpool(list_available_models, kb)

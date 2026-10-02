@@ -11,6 +11,7 @@ import EntityTypesEditor from '@/components/EntityTypesEditor'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { UnLanguageDatalist, UN_LANG_LIST_ID } from '@/components/UnLanguageDatalist'
+import { ModelListDatalist, MODEL_LIST_ID } from '@/components/ModelListDatalist'
 
 const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
@@ -239,8 +240,10 @@ export default function Settings() {
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-[12px] font-medium text-muted-foreground">{t('common:fields.model')}</label>
+                  <ModelListDatalist />
                   <input
                     value={model}
+                    list={MODEL_LIST_ID}
                     disabled={loading || !config}
                     onChange={(e) => setModel(e.target.value)}
                     placeholder="gpt-5.4"

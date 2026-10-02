@@ -3,6 +3,7 @@ import { Routes, Route, useParams } from "react-router"
 import { MotionConfig } from "motion/react"
 import { KeyRound, Loader2 } from "lucide-react"
 import AppSidebar from "@/components/AppSidebar"
+import GdriveSyncProvider from "@/components/GdriveSyncProvider"
 import TitleBar from "@/components/TitleBar"
 import { ThemeToggle } from "@/lib/theme"
 import { LanguageToggle } from "@/lib/language"
@@ -138,6 +139,7 @@ export default function App() {
 
   return (
     <MotionConfig reducedMotion="user">
+      <GdriveSyncProvider>
       <div className="ambient-ground h-screen w-screen flex overflow-hidden">
         {isDesktopShell && (
           <div className="absolute top-0 inset-x-0 z-50">
@@ -182,6 +184,7 @@ export default function App() {
         <ConnectionDialog open={authOpen} onOpenChange={setAuthOpen} />
         <Toaster />
       </div>
+      </GdriveSyncProvider>
     </MotionConfig>
   )
 }

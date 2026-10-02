@@ -19,12 +19,16 @@ from typing import Any, Callable
 
 from openkb.cli import _add_for_api, run_remove_for_api
 from openkb.config import resolve_credential_bundle
-from openkb.connectors.gdrive import DriveFile, download_file, list_ingestible_files
+from openkb.connectors.gdrive import DriveFile, GdriveError, download_file, list_ingestible_files
 from openkb.connectors.store import FileRecord, GdriveState, load_state, save_state
 
 logger = logging.getLogger(__name__)
 
 _MAX_EVENTS = 200
+
+
+class SyncInProgressError(GdriveError):
+    """A Drive sync is already running for this KB (manual or poller)."""
 
 
 def _now_iso() -> str:
@@ -59,23 +63,42 @@ def sync_once(
     fetch_bytes: Callable[[Path, DriveFile], bytes] | None = None,
     add_file: Callable[[Path, Path], Any] | None = None,
     remove_file: Callable[[Path, str], Any] | None = None,
+    on_event: Callable[[str, dict[str, Any]], None] | None = None,
+    is_cancelled: Callable[[], bool] | None = None,
 ) -> dict[str, int]:
     """Poll the connected folder once and ingest new/changed/deleted files.
 
-    Returns counters ``added``, ``skipped``, ``failed``, ``removed``.
+    Returns counters ``added``, ``skipped``, ``failed``, ``removed`` — plus
+    ``cancelled: 1`` when ``is_cancelled`` stopped the run between files
+    (a file mid-download/mid-ingest always finishes; already-processed files
+    stay recorded in ``state.files``).
     """
     list_fn = list_files or _default_list
     fetch_fn = fetch_bytes or _default_fetch
     add_fn = add_file or _default_add
     remove_fn = remove_file or _default_remove
 
+    def emit(event: str, data: dict[str, Any]) -> None:
+        if on_event is not None:
+            on_event(event, data)
+
+    def cancelled() -> bool:
+        return is_cancelled is not None and is_cancelled()
+
+    def progress(fid: str, name: str, status: str, message: str | None = None) -> None:
+        data = {"id": fid, "name": name, "status": status}
+        if message:
+            data["message"] = message
+        emit("file", data)
+
     state = load_state(kb_dir)
     counters = {"added": 0, "skipped": 0, "failed": 0, "removed": 0}
     if not state.folder_id:
         state.error = "No Drive folder is selected."
         save_state(kb_dir, state)
-        return counters
+        raise GdriveError(state.error)
 
+    emit("scanning", {})
     try:
         remote = list_fn(kb_dir, state.folder_id)
     except Exception as exc:
@@ -86,23 +109,40 @@ def sync_once(
     raw_dir = kb_dir / "raw"
     raw_dir.mkdir(parents=True, exist_ok=True)
     remote_ids = {f.id for f in remote}
+    deleted = [(fid, rec) for fid, rec in state.files.items() if fid not in remote_ids]
+    emit(
+        "files",
+        {
+            "files": [{"id": f.id, "name": f.name} for f in remote]
+            + [{"id": fid, "name": rec.name} for fid, rec in deleted]
+        },
+    )
 
+    was_cancelled = False
     for file in remote:
+        if cancelled():
+            was_cancelled = True
+            break
         prev = state.files.get(file.id)
         if prev is not None and prev.modified_time == file.modified_time:
+            progress(file.id, file.name, "skipped")
             continue
+        progress(file.id, file.name, "downloading")
         try:
             content = fetch_fn(kb_dir, file)
         except Exception as exc:
             logger.warning("Google Drive download failed for %s: %s", file.name, exc)
             counters["failed"] += 1
+            progress(file.id, file.name, "failed", "Could not download this Drive file.")
             continue
         digest = _sha256(content)
         if prev is not None and prev.sha256 == digest:
             prev.modified_time = file.modified_time
+            progress(file.id, file.name, "skipped")
             continue
         dest = raw_dir / file.local_name
         dest.write_bytes(content)
+        progress(file.id, file.name, "processing")
         if prev is not None:
             try:
                 remove_fn(kb_dir, prev.local_name)
@@ -114,6 +154,7 @@ def sync_once(
             logger.warning("Ingest failed for %s: %s", file.local_name, exc)
             dest.unlink(missing_ok=True)
             counters["failed"] += 1
+            progress(file.id, file.name, "failed", "Could not compile this file into the KB.")
             continue
         status = getattr(result, "status", None) or (
             result.get("status") if isinstance(result, dict) else "added"
@@ -124,32 +165,39 @@ def sync_once(
         elif status == "failed":
             dest.unlink(missing_ok=True)
             counters["failed"] += 1
+            progress(file.id, file.name, "failed", "Could not compile this file into the KB.")
             continue
         else:
             counters["added"] += 1
+            status = "added"
         state.files[file.id] = FileRecord(
             name=file.name,
             modified_time=file.modified_time,
             sha256=digest,
             local_name=file.local_name,
         )
+        progress(file.id, file.name, status)
 
-    for old_id, rec in list(state.files.items()):
-        if old_id in remote_ids:
-            continue
+    for old_id, rec in deleted if not was_cancelled else []:
+        if cancelled():
+            was_cancelled = True
+            break
+        progress(old_id, rec.name, "removing")
         try:
             remove_fn(kb_dir, rec.local_name)
             counters["removed"] += 1
         except Exception as exc:
             logger.warning("Could not remove deleted Drive file %s: %s", rec.local_name, exc)
             counters["failed"] += 1
+            progress(old_id, rec.name, "failed", "Could not remove this file from the KB.")
             continue
         del state.files[old_id]
+        progress(old_id, rec.name, "removed")
 
     state.last_sync_at = _now_iso()
     state.error = None
     save_state(kb_dir, state)
-    return counters
+    return {**counters, "cancelled": int(was_cancelled)}
 
 
 @dataclass
@@ -162,6 +210,8 @@ class SyncerState:
     running: threading.Event = field(default_factory=threading.Event)
     wake: threading.Event = field(default_factory=threading.Event)
     sync_lock: threading.Lock = field(default_factory=threading.Lock)
+    # Set (via ``stop``) to abort an in-flight poll between files.
+    cancelled: threading.Event = field(default_factory=threading.Event)
     events: deque = field(default_factory=lambda: deque(maxlen=_MAX_EVENTS))
     counters: dict[str, int] = field(
         default_factory=lambda: {"added": 0, "skipped": 0, "failed": 0, "removed": 0}
@@ -171,6 +221,47 @@ class SyncerState:
 
     def __post_init__(self) -> None:
         self.running.set()
+
+
+@dataclass
+class ManualSyncProgress:
+    """Server-side snapshot of one ``sync_now`` run.
+
+    Kept after the run finishes (until the next ``sync_now`` for the same KB
+    overwrites it) so a reloaded web UI can rebuild the progress popup via
+    ``GET /sync/active`` instead of losing it with the SSE connection.
+    ``phase``: ``running`` | ``done`` | ``cancelled`` | ``error``.
+    """
+
+    kb: str
+    started_at: float
+    cancel: threading.Event = field(default_factory=threading.Event)
+    phase: str = "running"
+    files: dict[str, dict[str, Any]] = field(default_factory=dict)
+    result: dict[str, Any] | None = None
+    error: str | None = None
+    lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+
+    def record(self, event: str, data: dict[str, Any]) -> None:
+        with self.lock:
+            if event == "files":
+                self.files = {
+                    item["id"]: {"id": item["id"], "name": item["name"], "status": "pending"}
+                    for item in data.get("files", [])
+                }
+            elif event == "file":
+                self.files[str(data["id"])] = dict(data)
+
+    def snapshot(self) -> dict[str, Any]:
+        with self.lock:
+            return {
+                "kb": self.kb,
+                "phase": self.phase,
+                "started_at": self.started_at,
+                "files": [dict(f) for f in self.files.values()],
+                "result": dict(self.result) if self.result is not None else None,
+                "error": self.error,
+            }
 
 
 def _record_event(state: SyncerState, event: str, data: dict[str, Any]) -> None:
@@ -184,18 +275,29 @@ def _inc(state: SyncerState, key: str, n: int = 1) -> None:
         state.counters[key] = state.counters.get(key, 0) + n
 
 
-def _run_poll(syncer: SyncerState) -> dict[str, int] | None:
+def _run_poll(
+    syncer: SyncerState,
+    *,
+    on_event: Callable[[str, dict[str, Any]], None] | None = None,
+    raise_errors: bool = False,
+) -> dict[str, int] | None:
     with syncer.sync_lock:
         try:
-            result = sync_once(syncer.kb_dir)
+            result = sync_once(
+                syncer.kb_dir,
+                on_event=on_event,
+                is_cancelled=lambda: not syncer.running.is_set() or syncer.cancelled.is_set(),
+            )
         except Exception as exc:
             _record_event(syncer, "error", {"message": str(exc)})
             logger.warning("Google Drive sync failed for KB %s: %s", syncer.kb, exc)
+            if raise_errors:
+                raise
             return None
-    for key, n in result.items():
-        _inc(syncer, key, n)
-    _record_event(syncer, "sync", dict(result))
-    return result
+        for key, n in result.items():
+            _inc(syncer, key, n)
+        _record_event(syncer, "sync", dict(result))
+        return result
 
 
 def _run_worker(syncer: SyncerState) -> None:
@@ -214,6 +316,7 @@ class GDriveSyncRegistry:
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._syncers: dict[str, SyncerState] = {}
+        self._progress: dict[str, ManualSyncProgress] = {}
 
     def start(self, kb: str, kb_dir: Path) -> SyncerState:
         disk = load_state(kb_dir)
@@ -259,19 +362,92 @@ class GDriveSyncRegistry:
             "counters": counters,
         }
 
-    def sync_now(self, kb: str, kb_dir: Path) -> dict[str, int]:
-        """Run one poll immediately (also wakes the background worker)."""
+    def sync_now(
+        self,
+        kb: str,
+        kb_dir: Path,
+        *,
+        on_event: Callable[[str, dict[str, Any]], None] | None = None,
+    ) -> dict[str, int]:
+        """Run one poll immediately (also wakes the background worker).
+
+        Refuses to overlap: raises :class:`SyncInProgressError` when the
+        background poller holds ``sync_lock`` or another ``sync_now`` is
+        still running. Records a :class:`ManualSyncProgress` snapshot so a
+        reloaded UI can rebuild the popup via :meth:`sync_progress`.
+        """
         syncer = self.get(kb)
+        acquired = False
         if syncer is not None:
-            result = _run_poll(syncer)
-            return result or {"added": 0, "skipped": 0, "failed": 0, "removed": 0}
-        return sync_once(kb_dir)
+            # Non-blocking: a second run must not queue behind the poller and
+            # silently re-scan the folder — the caller gets a 409 instead.
+            acquired = syncer.sync_lock.acquire(blocking=False)
+            if not acquired:
+                raise SyncInProgressError("A Drive sync is already in progress for this KB.")
+        try:
+            with self._lock:
+                existing = self._progress.get(kb)
+                if existing is not None and existing.phase == "running":
+                    raise SyncInProgressError("A Drive sync is already in progress for this KB.")
+                prog = ManualSyncProgress(kb=kb, started_at=time.time())
+                self._progress[kb] = prog
+
+            def record(event: str, data: dict[str, Any]) -> None:
+                prog.record(event, data)
+                if on_event is not None:
+                    on_event(event, data)
+
+            try:
+                result = sync_once(kb_dir, on_event=record, is_cancelled=prog.cancel.is_set)
+            except Exception as exc:
+                with prog.lock:
+                    prog.phase = "error"
+                    prog.error = str(exc)
+                if syncer is not None:
+                    _record_event(syncer, "error", {"message": str(exc)})
+                raise
+            if syncer is not None:
+                for key, n in result.items():
+                    _inc(syncer, key, n)
+                _record_event(syncer, "sync", dict(result))
+            with prog.lock:
+                prog.result = dict(result)
+                prog.phase = "cancelled" if result.get("cancelled") else "done"
+            return result
+        finally:
+            if acquired and syncer is not None:
+                syncer.sync_lock.release()
+
+    def cancel_sync(self, kb: str) -> bool:
+        """Request cancellation of an in-flight ``sync_now`` for ``kb``.
+
+        Cooperative: the worker finishes the file it is on, then stops.
+        Returns False when no manual sync is running.
+        """
+        with self._lock:
+            prog = self._progress.get(kb)
+        if prog is None or prog.phase != "running":
+            return False
+        prog.cancel.set()
+        return True
+
+    def sync_progress(self) -> list[dict[str, Any]]:
+        """Snapshots of every manual sync (running and finished), for UI restore."""
+        with self._lock:
+            progs = list(self._progress.values())
+        return [prog.snapshot() for prog in progs]
 
     def stop(self, kb: str, *, persist_enabled: bool = True) -> bool:
         with self._lock:
             syncer = self._syncers.get(kb)
+            prog = self._progress.get(kb)
+        # Cancel an in-flight manual sync too — otherwise its worker keeps
+        # writing into kb_dir (e.g. recreating .openkb after a KB delete).
+        if prog is not None and prog.phase == "running":
+            prog.cancel.set()
         if syncer is None:
             return False
+        syncer.cancelled.set()
         syncer.running.clear()
         syncer.wake.set()
         if syncer.worker_thread is not None:

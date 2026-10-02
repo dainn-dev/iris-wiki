@@ -94,7 +94,35 @@
       "noFolders": "No folders here. Paste a folder ID if this account only has a shared folder.",
       "useFolder": "Use",
       "useThisFolder": "Use this folder",
-      "usePastedId": "Use pasted ID"
+      "usePastedId": "Use pasted ID",
+      "progress": {
+        "title": "Drive sync · {{kb}}",
+        "waiting": "Preparing sync · waiting for any active sync to finish…",
+        "scanning": "Scanning Drive folder…",
+        "syncing": "Syncing files…",
+        "complete": "Sync complete",
+        "partial": "Sync finished with errors",
+        "error": "Sync could not be completed",
+        "cancelled": "Sync stopped — processed files were kept",
+        "stop": "Stop sync",
+        "cancelling": "Stopping…",
+        "count": "{{completed}} / {{total}} files processed",
+        "empty": "No supported files to sync.",
+        "collapse": "Collapse sync progress",
+        "expand": "Expand sync progress",
+        "connectionLost": "Progress connection lost. Sync may still be running on the server; check its status before retrying.",
+        "file": {
+          "pending": "Waiting",
+          "downloading": "Downloading",
+          "processing": "Processing",
+          "removing": "Removing",
+          "added": "Completed",
+          "skipped": "Skipped",
+          "failed": "Failed",
+          "removed": "Removed",
+          "interrupted": "Not confirmed"
+        }
+      }
     }
   }
 }

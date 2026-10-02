@@ -94,7 +94,35 @@
       "noFolders": "Không có thư mục ở đây. Dán ID nếu tài khoản này chỉ có thư mục được chia sẻ.",
       "useFolder": "Dùng",
       "useThisFolder": "Dùng thư mục này",
-      "usePastedId": "Dùng ID đã dán"
+      "usePastedId": "Dùng ID đã dán",
+      "progress": {
+        "title": "Đồng bộ Drive · {{kb}}",
+        "waiting": "Đang chuẩn bị · chờ lượt đồng bộ đang chạy hoàn tất…",
+        "scanning": "Đang quét thư mục Drive…",
+        "syncing": "Đang đồng bộ tệp…",
+        "complete": "Đồng bộ hoàn tất",
+        "partial": "Đồng bộ kết thúc, có tệp bị lỗi",
+        "error": "Không thể hoàn tất đồng bộ",
+        "cancelled": "Đã dừng đồng bộ — giữ lại các tệp đã xử lý",
+        "stop": "Dừng đồng bộ",
+        "cancelling": "Đang dừng…",
+        "count": "Đã xử lý {{completed}} / {{total}} tệp",
+        "empty": "Không có tệp được hỗ trợ để đồng bộ.",
+        "collapse": "Thu gọn tiến độ đồng bộ",
+        "expand": "Mở rộng tiến độ đồng bộ",
+        "connectionLost": "Mất kết nối theo dõi tiến độ. Máy chủ có thể vẫn đang đồng bộ; hãy kiểm tra trạng thái trước khi thử lại.",
+        "file": {
+          "pending": "Đang chờ",
+          "downloading": "Đang tải",
+          "processing": "Đang xử lý",
+          "removing": "Đang xóa",
+          "added": "Hoàn tất",
+          "skipped": "Bỏ qua",
+          "failed": "Lỗi",
+          "removed": "Đã xóa",
+          "interrupted": "Chưa xác nhận"
+        }
+      }
     }
   }
 }

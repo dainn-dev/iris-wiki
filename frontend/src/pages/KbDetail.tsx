@@ -15,6 +15,8 @@ import GdriveConnectorPanel from '@/components/GdriveConnectorPanel'
 import KbOverviewCards, { type Section } from '@/components/KbOverviewCards'
 import KbSettingsSheet from '@/components/KbSettingsSheet'
 import { useAnimatedSwitch } from '@/hooks/useAnimatedSwitch'
+import { useGdriveSync } from '@/lib/gdrive-sync-context'
+import { completedFileCount } from '@/lib/gdrive-sync-state'
 import { cn } from '@/lib/utils'
 
 /** True when `line` looks like a line of a YAML frontmatter block: a blank line,
@@ -237,6 +239,30 @@ export default function KbDetail() {
       setInvError(errMsg(e))
     }
   }, [id])
+
+  // Drive sync: refresh the document list as files finish (not just at the
+  // end), throttled so a fast sync doesn't fire one /list request per file.
+  // A terminal phase always triggers one last refresh — also when the popup
+  // was restored from a server snapshot after a page reload.
+  const { progress: gdriveProgress } = useGdriveSync()
+  const gdriveDoneCount = gdriveProgress && gdriveProgress.kb === id ? completedFileCount(gdriveProgress) : 0
+  const gdriveSettled = gdriveProgress !== null && gdriveProgress.kb === id
+    && ['complete', 'error', 'cancelled'].includes(gdriveProgress.phase)
+  const gdriveLastRefresh = useRef(0)
+  useEffect(() => {
+    if (!gdriveDoneCount) return
+    const elapsed = Date.now() - gdriveLastRefresh.current
+    const timer = setTimeout(() => {
+      gdriveLastRefresh.current = Date.now()
+      void refreshInventory()
+    }, Math.max(0, 1500 - elapsed))
+    return () => clearTimeout(timer)
+  }, [gdriveDoneCount, refreshInventory])
+  useEffect(() => {
+    if (!gdriveSettled) return
+    const timer = setTimeout(() => void refreshInventory(), 0)
+    return () => clearTimeout(timer)
+  }, [gdriveSettled, refreshInventory])
 
   /** The open page was deleted (F2): close the now-gone page and refresh the
    *  inventory — backlink pages changed on disk too (their [[links]] were

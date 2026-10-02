@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router"
 import { useTranslation } from "react-i18next"
 import { Cloud, FolderOpen, Loader2, Pause, Play, RefreshCw, Unplug } from "lucide-react"
 import { toast } from "sonner"
+import { useGdriveSync } from "@/lib/gdrive-sync-context"
 import {
   gdriveConnectSa,
   gdriveDisconnect,
@@ -10,7 +11,6 @@ import {
   gdriveOAuthStart,
   gdriveSetFolder,
   gdriveStatus,
-  gdriveSyncNow,
   gdriveSyncStop,
   type GdriveFolder,
   type GdriveStatus,
@@ -48,6 +48,7 @@ export default function GdriveConnectorPanel({
   const [parentId, setParentId] = useState("root")
   const [folders, setFolders] = useState<GdriveFolder[]>([])
   const [pasteId, setPasteId] = useState("")
+  const { runningKb, startSync } = useGdriveSync()
 
   const refresh = useCallback(async () => {
     if (!kb) return
@@ -138,10 +139,13 @@ export default function GdriveConnectorPanel({
     run(async () => {
       await gdriveSetFolder(kb, id)
       setPickerOpen(false)
+      void startSync(kb)
     }, t("connector.gdrive.folderSetToast"))
 
-  const syncSummary = (r: { added: number; skipped: number; failed: number; removed: number }) =>
-    t("connector.gdrive.syncToast", r)
+  const syncNow = () =>
+    run(async () => {
+      await startSync(kb)
+    })
 
   if (!kb) {
     return (
@@ -223,13 +227,8 @@ export default function GdriveConnectorPanel({
               {status.folder_id && (
                 <button
                   type="button"
-                  disabled={busy}
-                  onClick={() =>
-                    void run(async () => {
-                      const r = await gdriveSyncNow(kb)
-                      toast.success(syncSummary(r))
-                    })
-                  }
+                  disabled={busy || Boolean(runningKb)}
+                  onClick={syncNow}
                   className="h-8 px-3 rounded-lg bg-accent-brand text-white text-[12.5px] inline-flex items-center gap-1.5 disabled:opacity-50"
                 >
                   {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}

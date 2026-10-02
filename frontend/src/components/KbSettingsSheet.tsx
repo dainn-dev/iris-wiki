@@ -16,6 +16,7 @@ import type { SseEvent } from '@/api/client'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { UnLanguageDatalist, UN_LANG_LIST_ID } from '@/components/UnLanguageDatalist'
+import { ModelListDatalist, MODEL_LIST_ID } from '@/components/ModelListDatalist'
 import EntityTypesEditor from '@/components/EntityTypesEditor'
 
 const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e))
@@ -255,6 +256,7 @@ function KbConfigSection({ kb }: { kb: string }) {
       <OverrideRow
         label={t('common:fields.model')}
         field="model"
+        kb={kb}
         source={config.sources.model}
         effective={config.model}
         globalValue={config.global_values.model}
@@ -357,7 +359,7 @@ function KbConfigSection({ kb }: { kb: string }) {
 
 /** One scalar field: a 为本库覆盖 switch + inherited badge OR an override input. */
 function OverrideRow({
-  label, field, source, effective, globalValue, busy, numeric, onSet, onRevert,
+  label, field, source, effective, globalValue, busy, numeric, onSet, onRevert, kb,
 }: {
   label: string
   field: string
@@ -368,6 +370,7 @@ function OverrideRow({
   numeric?: boolean
   onSet: (value: string) => void
   onRevert: () => void
+  kb?: string
 }) {
   const { t } = useTranslation(['kbSettings', 'common'])
   const overridden = source === 'kb'
@@ -382,6 +385,7 @@ function OverrideRow({
   return (
     <div>
       {field === 'language' && <UnLanguageDatalist />}
+      {field === 'model' && <ModelListDatalist kb={kb} />}
       <div className="flex items-center justify-between">
         <label className="text-[12px] font-medium text-muted-foreground">{label}</label>
         <span className="flex items-center gap-2 text-[11px] text-muted-foreground">
@@ -397,7 +401,7 @@ function OverrideRow({
       {overridden ? (
         <input
           type={numeric ? 'number' : 'text'}
-          list={field === 'language' ? UN_LANG_LIST_ID : undefined}
+          list={field === 'language' ? UN_LANG_LIST_ID : field === 'model' ? MODEL_LIST_ID : undefined}
           value={draft}
           disabled={busy}
           onChange={(e) => setDraft(e.target.value)}

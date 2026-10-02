@@ -1,4 +1,5 @@
-import { apiFetch } from "./client"
+import { apiFetch, apiStream } from "./client"
+import type { GdriveSyncEvent, SyncFile } from "../lib/gdrive-sync-state"
 
 export interface GdriveStatus {
   kb: string
@@ -28,6 +29,17 @@ export interface GdriveSyncResult {
   skipped: number
   failed: number
   removed: number
+  cancelled?: number
+}
+
+/** Server-side snapshot of a manual sync — survives a page reload. */
+export interface GdriveActiveSync {
+  kb: string
+  phase: "running" | "done" | "cancelled" | "error"
+  started_at: number
+  files: SyncFile[]
+  result: GdriveSyncResult | null
+  error: string | null
 }
 
 export function gdriveStatus(kb: string): Promise<GdriveStatus> {
@@ -77,10 +89,24 @@ export function gdriveSyncNow(kb: string): Promise<GdriveSyncResult> {
   })
 }
 
+export async function* gdriveSyncEvents(kb: string, signal?: AbortSignal): AsyncGenerator<GdriveSyncEvent> {
+  for await (const event of apiStream("/api/v1/connectors/gdrive/sync/now?stream=true", { kb }, signal)) {
+    yield event as GdriveSyncEvent
+  }
+}
+
 export function gdriveSyncStop(kb: string): Promise<GdriveStatus> {
   return apiFetch<GdriveStatus>("/api/v1/connectors/gdrive/sync/stop", {
     body: { kb },
   })
+}
+
+export function gdriveActiveSyncs(): Promise<{ syncs: GdriveActiveSync[] }> {
+  return apiFetch("/api/v1/connectors/gdrive/sync/active")
+}
+
+export function gdriveCancelSync(kb: string): Promise<{ kb: string; cancelling: boolean }> {
+  return apiFetch("/api/v1/connectors/gdrive/sync/cancel", { body: { kb } })
 }
 
 export function gdriveDisconnect(kb: string): Promise<{ kb: string; disconnected: boolean }> {

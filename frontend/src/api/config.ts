@@ -53,6 +53,20 @@ export function getGlobalConfig(): Promise<GlobalConfig> {
   return apiFetch<GlobalConfig>("/api/v1/config")
 }
 
+/** Model ids advertised by the configured API base (`{base}/models`).
+ *  `configured: false` means no base URL is set — callers should fall back to
+ *  a plain free-text input. */
+export interface ModelList {
+  configured: boolean
+  models: string[]
+}
+
+export function getModelList(kb?: string): Promise<ModelList> {
+  return apiFetch<ModelList>(
+    `/api/v1/config/models${kb ? `?kb=${encodeURIComponent(kb)}` : ""}`,
+  )
+}
+
 export function patchGlobalConfig(patch: GlobalConfigPatch): Promise<GlobalConfig> {
   return apiFetch<GlobalConfig>("/api/v1/config", { method: "PATCH", body: patch })
 }

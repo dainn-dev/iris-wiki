@@ -30,7 +30,11 @@ from openkb.connectors.store import (
     set_refresh_token,
     set_service_account_json,
 )
-from openkb.connectors.sync_service import sync_once
+from openkb.connectors.sync_service import (
+    GDriveSyncRegistry,
+    SyncInProgressError,
+    sync_once,
+)
 
 
 def _client(monkeypatch, token: str | None = "secret") -> TestClient:
@@ -297,3 +301,290 @@ def test_connect_service_account_without_drive_api(monkeypatch, kb_dir):
     assert response.status_code == 200
     assert response.json()["auth_mode"] == "service_account"
     assert get_service_account_json(kb_dir)["client_email"] == payload["client_email"]
+
+
+def _configure_sync(monkeypatch, kb_dir, files):
+    state = load_state(kb_dir)
+    state.folder_id = "folder1"
+    save_state(kb_dir, state)
+    monkeypatch.setattr("openkb.connectors.sync_service._default_list", lambda *_: files)
+    monkeypatch.setattr("openkb.connectors.sync_service._default_fetch", lambda *_: b"body")
+    monkeypatch.setattr(
+        "openkb.connectors.sync_service._default_add", lambda *_: {"status": "added"}
+    )
+
+
+def _sse_events(text):
+    events = []
+    for block in text.split("\n\n"):
+        lines = block.splitlines()
+        if len(lines) == 2 and lines[0].startswith("event: "):
+            events.append((lines[0][7:], json.loads(lines[1][6:])))
+    return events
+
+
+def test_sync_progress_only_finishes_file_after_ingestion(monkeypatch, kb_dir):
+    _configure_sync(monkeypatch, kb_dir, [_drive_file()])
+    events = []
+
+    def add_file(*_):
+        assert events[-1] == ("file", {"id": "id1", "name": "notes.pdf", "status": "processing"})
+        return {"status": "added"}
+
+    result = sync_once(kb_dir, add_file=add_file, on_event=lambda *e: events.append(e))
+    assert [name for name, _ in events] == ["scanning", "files", "file", "file", "file"]
+    assert events[1][1] == {"files": [{"id": "id1", "name": "notes.pdf"}]}
+    assert [data["status"] for name, data in events if name == "file"] == [
+        "downloading",
+        "processing",
+        "added",
+    ]
+    assert result["added"] == 1
+    assert load_state(kb_dir).files["id1"].name == "notes.pdf"
+
+
+@pytest.mark.parametrize("failure", ["download", "ingest", "failed_result", "skipped_result"])
+def test_sync_progress_reports_file_failures_and_skips(monkeypatch, kb_dir, failure):
+    _configure_sync(monkeypatch, kb_dir, [_drive_file()])
+    events = []
+
+    def fail(*_):
+        raise RuntimeError("private-provider-payload")
+
+    if failure == "download":
+        monkeypatch.setattr("openkb.connectors.sync_service._default_fetch", fail)
+    elif failure == "ingest":
+        monkeypatch.setattr("openkb.connectors.sync_service._default_add", fail)
+    else:
+        monkeypatch.setattr(
+            "openkb.connectors.sync_service._default_add",
+            lambda *_: {"status": failure.removesuffix("_result")},
+        )
+    result = sync_once(kb_dir, on_event=lambda *e: events.append(e))
+    expected = "skipped" if failure == "skipped_result" else "failed"
+    assert events[-1][1]["status"] == expected
+    assert result[expected] == 1
+    assert "private-provider-payload" not in json.dumps(events)
+
+
+@pytest.mark.parametrize("modified", [False, True])
+def test_sync_progress_marks_unchanged_files_skipped(monkeypatch, kb_dir, modified):
+    _configure_sync(monkeypatch, kb_dir, [_drive_file()])
+    sync_once(kb_dir)
+    if modified:
+        monkeypatch.setattr(
+            "openkb.connectors.sync_service._default_list",
+            lambda *_: [_drive_file(modified="new-time")],
+        )
+    events = []
+    result = sync_once(kb_dir, on_event=lambda *e: events.append(e))
+    assert events[-1][1]["status"] == "skipped"
+    assert result["added"] == 0
+
+
+def test_sync_progress_tracks_deleted_files(monkeypatch, kb_dir):
+    _configure_sync(monkeypatch, kb_dir, [_drive_file()])
+    sync_once(kb_dir)
+    monkeypatch.setattr("openkb.connectors.sync_service._default_list", lambda *_: [])
+    events = []
+    removed = []
+    sync_once(
+        kb_dir,
+        remove_file=lambda _, name: removed.append(name),
+        on_event=lambda *e: events.append(e),
+    )
+    assert events[1][1] == {"files": [{"id": "id1", "name": "notes.pdf"}]}
+    assert [data["status"] for name, data in events if name == "file"] == ["removing", "removed"]
+    assert removed == ["notes__id1.pdf"]
+
+
+def test_sync_now_streams_progress_and_preserves_json_api(monkeypatch, kb_dir):
+    _configure_sync(monkeypatch, kb_dir, [_drive_file()])
+    kb = _use_named_kb(monkeypatch, kb_dir)
+    client = _client(monkeypatch)
+    response = client.post(
+        "/api/v1/connectors/gdrive/sync/now?stream=true", headers=_auth(), json={"kb": kb}
+    )
+    assert response.headers["content-type"].startswith("text/event-stream")
+    assert response.headers["x-accel-buffering"] == "no"
+    events = _sse_events(response.text)
+    assert events[0][0] == "start"
+    assert events[-2] == (
+        "final",
+        {"kb": kb, "added": 1, "skipped": 0, "failed": 0, "removed": 0, "cancelled": 0},
+    )
+    assert events[-1] == ("done", {})
+    assert [d["status"] for e, d in events if e == "file"] == ["downloading", "processing", "added"]
+    response = client.post("/api/v1/connectors/gdrive/sync/now", headers=_auth(), json={"kb": kb})
+    assert response.json() == {
+        "kb": kb,
+        "added": 0,
+        "skipped": 0,
+        "failed": 0,
+        "removed": 0,
+        "cancelled": 0,
+    }
+
+
+def test_sync_stream_requires_auth(monkeypatch, kb_dir):
+    kb = _use_named_kb(monkeypatch, kb_dir)
+    response = _client(monkeypatch).post(
+        "/api/v1/connectors/gdrive/sync/now?stream=true", json={"kb": kb}
+    )
+    assert response.status_code == 401
+
+
+@pytest.mark.parametrize("active", [False, True])
+def test_sync_stream_auth_error_never_emits_success(monkeypatch, kb_dir, active):
+    from google.auth.exceptions import RefreshError
+
+    from openkb.connectors.sync_service import SyncerState
+
+    _configure_sync(monkeypatch, kb_dir, [])
+    kb = _use_named_kb(monkeypatch, kb_dir)
+    client = _client(monkeypatch)
+    if active:
+        registry = client.app.state.gdrive_registry
+        registry._syncers[kb] = SyncerState(kb, kb_dir, 300, 0)
+
+    def fail(*_):
+        raise RefreshError("invalid_grant: private-provider-payload")
+
+    monkeypatch.setattr("openkb.connectors.sync_service._default_list", fail)
+    response = client.post(
+        "/api/v1/connectors/gdrive/sync/now?stream=true", headers=_auth(), json={"kb": kb}
+    )
+    events = _sse_events(response.text)
+    assert events[-2][0] == "error"
+    assert "reconnect" in events[-2][1]["message"].lower()
+    assert "private-provider-payload" not in response.text
+    assert "final" not in [e for e, _ in events]
+    assert events[-1] == ("done", {})
+
+
+def test_sync_stream_without_folder_reports_error(monkeypatch, kb_dir):
+    kb = _use_named_kb(monkeypatch, kb_dir)
+    response = _client(monkeypatch).post(
+        "/api/v1/connectors/gdrive/sync/now?stream=true", headers=_auth(), json={"kb": kb}
+    )
+    events = _sse_events(response.text)
+    assert events[-2][0] == "error"
+    assert "folder" in events[-2][1]["message"].lower()
+    assert "final" not in [e for e, _ in events]
+
+
+def test_sync_once_cancel_stops_between_files_and_keeps_results(monkeypatch, kb_dir):
+    _configure_sync(
+        monkeypatch,
+        kb_dir,
+        [
+            _drive_file("id1", "a.pdf", "t1", "a__id1.pdf"),
+            _drive_file("id2", "b.pdf", "t2", "b__id2.pdf"),
+        ],
+    )
+    calls = {"n": 0}
+
+    def cancel() -> bool:
+        calls["n"] += 1
+        return calls["n"] > 1  # process file 1, cancel before file 2
+
+    events = []
+    result = sync_once(kb_dir, is_cancelled=cancel, on_event=lambda *e: events.append(e))
+    assert result == {"added": 1, "skipped": 0, "failed": 0, "removed": 0, "cancelled": 1}
+    assert "id1" in load_state(kb_dir).files
+    assert "id2" not in load_state(kb_dir).files
+
+
+def test_sync_now_rejects_overlap_and_records_snapshot(monkeypatch, kb_dir):
+    import threading
+    import time
+
+    _configure_sync(monkeypatch, kb_dir, [_drive_file()])
+    registry = GDriveSyncRegistry()
+    gate = threading.Event()
+    monkeypatch.setattr(
+        "openkb.connectors.sync_service._default_list",
+        lambda *_: (gate.wait(5), [_drive_file()])[1],
+    )
+    worker = threading.Thread(target=lambda: registry.sync_now("demo", kb_dir), daemon=True)
+    worker.start()
+    deadline = time.time() + 5
+    while time.time() < deadline:
+        snaps = registry.sync_progress()
+        if snaps and snaps[0]["phase"] == "running":
+            break
+        time.sleep(0.01)
+    else:
+        pytest.fail("manual sync did not register a running snapshot")
+    with pytest.raises(SyncInProgressError):
+        registry.sync_now("demo", kb_dir)
+    assert registry.cancel_sync("demo") is True
+    gate.set()
+    worker.join(5)
+    snap = registry.sync_progress()[0]
+    # Cancelled while still listing → no files were ever ingested.
+    assert snap["phase"] == "cancelled"
+    assert snap["result"]["added"] == 0
+    assert snap["files"] == [{"id": "id1", "name": "notes.pdf", "status": "pending"}]
+
+
+def test_sync_now_marks_partial_run_cancelled(monkeypatch, kb_dir):
+    _configure_sync(
+        monkeypatch,
+        kb_dir,
+        [
+            _drive_file("id1", "a.pdf", "t1", "a__id1.pdf"),
+            _drive_file("id2", "b.pdf", "t2", "b__id2.pdf"),
+        ],
+    )
+    registry = GDriveSyncRegistry()
+    monkeypatch.setattr(
+        "openkb.connectors.sync_service._default_add",
+        lambda *_: (registry.cancel_sync("demo"), {"status": "added"})[1],
+    )
+    result = registry.sync_now("demo", kb_dir)
+    assert result["cancelled"] == 1
+    assert result["added"] == 1
+    snap = registry.sync_progress()[0]
+    assert snap["phase"] == "cancelled"
+    assert {f["id"]: f["status"] for f in snap["files"]} == {
+        "id1": "added",
+        "id2": "pending",
+    }
+
+
+def test_sync_active_and_cancel_endpoints(monkeypatch, kb_dir):
+    _configure_sync(monkeypatch, kb_dir, [_drive_file()])
+    kb = _use_named_kb(monkeypatch, kb_dir)
+    client = _client(monkeypatch)
+    response = client.get("/api/v1/connectors/gdrive/sync/active", headers=_auth())
+    assert response.status_code == 200
+    assert response.json() == {"syncs": []}
+    response = client.post(
+        "/api/v1/connectors/gdrive/sync/cancel", headers=_auth(), json={"kb": kb}
+    )
+    assert response.status_code == 409
+    client.post("/api/v1/connectors/gdrive/sync/now", headers=_auth(), json={"kb": kb})
+    syncs = client.get("/api/v1/connectors/gdrive/sync/active", headers=_auth()).json()["syncs"]
+    assert syncs[0]["kb"] == kb
+    assert syncs[0]["phase"] == "done"
+    assert syncs[0]["files"][0]["status"] == "added"
+
+
+def test_sync_now_conflict_returns_409(monkeypatch, kb_dir):
+    from openkb.connectors.sync_service import SyncerState
+
+    _configure_sync(monkeypatch, kb_dir, [])
+    kb = _use_named_kb(monkeypatch, kb_dir)
+    client = _client(monkeypatch)
+    registry = client.app.state.gdrive_registry
+    syncer = SyncerState(kb, kb_dir, 300, 0)
+    syncer.sync_lock.acquire()  # simulate the poller mid-poll
+    registry._syncers[kb] = syncer
+    try:
+        response = client.post(
+            "/api/v1/connectors/gdrive/sync/now", headers=_auth(), json={"kb": kb}
+        )
+        assert response.status_code == 409
+    finally:
+        syncer.sync_lock.release()

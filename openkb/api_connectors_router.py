@@ -7,12 +7,19 @@ The OAuth browser callback is unauthenticated; CSRF is the signed ``state``.
 
 from __future__ import annotations
 
+import threading
+from contextvars import copy_context
+from pathlib import Path
+from queue import Empty, Queue
+from typing import Any, AsyncIterator
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, StreamingResponse
 from starlette.concurrency import run_in_threadpool
 
-from openkb.api_helpers import _resolve_kb, require_bearer_token
+from openkb.api_helpers import _resolve_kb, _sse, require_bearer_token
 from openkb.api_models import (
+    GdriveActiveSyncsResponse,
     GdriveConnectRequest,
     GdriveDisconnectResponse,
     GdriveFolderItem,
@@ -21,6 +28,7 @@ from openkb.api_models import (
     GdriveKbRequest,
     GdriveOAuthStartResponse,
     GdriveStatusResponse,
+    GdriveSyncCancelResponse,
     GdriveSyncResult,
 )
 from openkb.connectors.gdrive import (
@@ -45,6 +53,7 @@ from openkb.connectors.store import (
 )
 from openkb.connectors.sync_service import (
     GDriveSyncRegistry,
+    SyncInProgressError,
     enable_folder,
     pause_connector,
 )
@@ -197,19 +206,121 @@ async def gdrive_set_folder(
     return _status_payload(body.kb, kb_dir, registry)
 
 
+def _sync_error_message(exc: Exception) -> str:
+    if isinstance(exc, (GdriveUnavailableError, SyncInProgressError)):
+        return str(exc)
+    if isinstance(exc, GdriveError) and str(exc) == "No Drive folder is selected.":
+        return str(exc)
+    cause: BaseException = exc
+    while cause.__cause__ is not None:
+        cause = cause.__cause__
+    try:
+        from google.auth.exceptions import RefreshError
+        from googleapiclient.errors import HttpError
+    except ImportError:
+        return "Google Drive sync failed. Check the server configuration and try again."
+    if isinstance(cause, RefreshError):
+        return "Google Drive authentication failed. Reconnect with valid Google credentials."
+    if isinstance(cause, HttpError):
+        status = cause.resp.status
+        if status == 401:
+            return "Google Drive authentication expired. Reconnect Google Drive."
+        if status == 404:
+            return "Drive folder or file not found. Check the folder ID and sharing permissions."
+        if status == 403:
+            reasons = {item.get("reason") for item in cause.error_details if isinstance(item, dict)}
+            if "accessNotConfigured" in reasons:
+                return "Enable Google Drive API in the credentials' Google Cloud project and retry."
+            return "Google Drive access denied. Check sharing permissions and API quota."
+        if status == 429:
+            return "Google Drive rate limit reached. Try again later."
+    return "Google Drive sync failed. Check the server configuration and try again."
+
+
+async def _stream_gdrive_sync(
+    kb: str, kb_dir: Path, registry: GDriveSyncRegistry
+) -> AsyncIterator[str]:
+    events: Queue[tuple[str, dict[str, Any]]] = Queue()
+    closed = threading.Event()
+
+    def emit(event: str, data: dict[str, Any]) -> None:
+        if not closed.is_set():
+            events.put((event, data))
+
+    def worker() -> None:
+        try:
+            result = registry.sync_now(kb, kb_dir, on_event=emit)
+            emit("final", {"kb": kb, **result})
+        except Exception as exc:
+            emit("error", {"message": _sync_error_message(exc)})
+        finally:
+            emit("done", {})
+
+    yield _sse("start", {"kb": kb})
+    threading.Thread(target=copy_context().run, args=(worker,), daemon=True).start()
+    try:
+        while True:
+            try:
+                event, data = await run_in_threadpool(events.get, True, 10)
+            except Empty:
+                yield ": keep-alive\n\n"
+                continue
+            yield _sse(event, data)
+            if event == "done":
+                break
+    finally:
+        closed.set()
+
+
 @connectors_router.post("/api/v1/connectors/gdrive/sync/now", response_model=GdriveSyncResult)
 async def gdrive_sync_now(
     request: Request,
     body: GdriveKbRequest,
+    stream: bool = Query(default=False),
     _: None = Depends(require_bearer_token),
-) -> GdriveSyncResult:
+) -> Any:
     kb_dir = _resolve_kb(body.kb)
     registry = _gdrive_registry(request)
+    if stream:
+        return StreamingResponse(
+            _stream_gdrive_sync(body.kb, kb_dir, registry),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
     try:
         result = await run_in_threadpool(registry.sync_now, body.kb, kb_dir)
+    except SyncInProgressError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except (GdriveError, GdriveUnavailableError) as exc:
         raise _http_from_gdrive(exc) from exc
     return GdriveSyncResult(kb=body.kb, **result)
+
+
+@connectors_router.get(
+    "/api/v1/connectors/gdrive/sync/active",
+    response_model=GdriveActiveSyncsResponse,
+)
+async def gdrive_sync_active(
+    request: Request,
+    _: None = Depends(require_bearer_token),
+) -> GdriveActiveSyncsResponse:
+    """Snapshots of manual syncs (running + finished) for popup restore."""
+    return GdriveActiveSyncsResponse(syncs=_gdrive_registry(request).sync_progress())
+
+
+@connectors_router.post(
+    "/api/v1/connectors/gdrive/sync/cancel",
+    response_model=GdriveSyncCancelResponse,
+)
+async def gdrive_sync_cancel(
+    body: GdriveKbRequest,
+    request: Request,
+    _: None = Depends(require_bearer_token),
+) -> GdriveSyncCancelResponse:
+    """Cooperatively cancel an in-flight manual sync (between files)."""
+    if not _gdrive_registry(request).cancel_sync(body.kb):
+        raise HTTPException(status_code=409, detail="No Drive sync is running for this KB.")
+    return GdriveSyncCancelResponse(kb=body.kb)
 
 
 @connectors_router.post("/api/v1/connectors/gdrive/sync/stop", response_model=GdriveStatusResponse)
